@@ -4,7 +4,7 @@ import type { MovementFilter } from '../movementFilter';
 import type { Movement } from '../types';
 
 export async function listMovements(db: Db, filter: MovementFilter, limit: number): Promise<Movement[]> {
-  const safe = Math.min(Math.max(1, Math.trunc(limit) || 1), 50000);
+  const safe = Math.min(Math.max(1, Math.trunc(limit) || 1), 100000);
   const where: string[] = [];
   const params: unknown[] = [];
   const add = (sql: (p: string) => string, value: unknown) => {
