@@ -18,7 +18,7 @@ describe('entrySchema', () => {
     const r = entrySchema.safeParse({
       batchId: a,
       confirmNegative: false,
-      items: [{ type: 'transfer', drinkId: drink, fromLocationId: a, toLocationId: b, quantity: 5 }],
+      items: [{ type: 'transfer', drinkId: drink, unitsPerCase: 24, fromLocationId: a, toLocationId: b, quantity: 5 }],
     });
     expect(r.success).toBe(true);
   });
@@ -26,7 +26,7 @@ describe('entrySchema', () => {
     const r = entrySchema.safeParse({
       batchId: a,
       confirmNegative: false,
-      items: [{ type: 'transfer', drinkId: drink, fromLocationId: a, toLocationId: a, quantity: 5 }],
+      items: [{ type: 'transfer', drinkId: drink, unitsPerCase: 24, fromLocationId: a, toLocationId: a, quantity: 5 }],
     });
     expect(r.success).toBe(false);
     expect(r.error?.issues[0].message).toBe('移動元と移動先が同じです');
@@ -35,7 +35,7 @@ describe('entrySchema', () => {
     const r = entrySchema.safeParse({
       batchId: a,
       confirmNegative: false,
-      items: [{ type: 'sale', drinkId: drink, fromLocationId: a, quantity: 0 }],
+      items: [{ type: 'sale', drinkId: drink, unitsPerCase: 24, fromLocationId: a, quantity: 0 }],
     });
     expect(r.success).toBe(false);
   });
@@ -43,7 +43,7 @@ describe('entrySchema', () => {
     const r = entrySchema.safeParse({
       batchId: a,
       confirmNegative: false,
-      items: [{ type: 'adjust', drinkId: drink, toLocationId: a, countedQuantity: 0 }],
+      items: [{ type: 'adjust', drinkId: drink, unitsPerCase: 24, toLocationId: a, countedQuantity: 0 }],
     });
     expect(r.success).toBe(true);
   });
@@ -51,7 +51,7 @@ describe('entrySchema', () => {
     expect(entrySchema.safeParse({ batchId: a, confirmNegative: false, items: [] }).success).toBe(false);
   });
   it('accepts up to 500 items and rejects more', () => {
-    const item = { type: 'sale', drinkId: drink, fromLocationId: a, quantity: 1 };
+    const item = { type: 'sale', drinkId: drink, unitsPerCase: 24, fromLocationId: a, quantity: 1 };
     expect(
       entrySchema.safeParse({ batchId: a, confirmNegative: false, items: Array(500).fill(item) }).success,
     ).toBe(true);
@@ -59,11 +59,21 @@ describe('entrySchema', () => {
     expect(r.success).toBe(false);
     expect(r.error?.issues[0].message).toBe('一度に登録できるのは500件までです');
   });
+  it('requires a positive integer unitsPerCase on each item', () => {
+    for (const unitsPerCase of [undefined, 0, 1.5]) {
+      const r = entrySchema.safeParse({
+        batchId: a,
+        confirmNegative: false,
+        items: [{ type: 'sale', drinkId: drink, unitsPerCase, fromLocationId: a, quantity: 1 }],
+      });
+      expect(r.success).toBe(false);
+    }
+  });
   it('rejects an absurdly large quantity', () => {
     const r = entrySchema.safeParse({
       batchId: a,
       confirmNegative: false,
-      items: [{ type: 'sale', drinkId: drink, fromLocationId: a, quantity: 100001 }],
+      items: [{ type: 'sale', drinkId: drink, unitsPerCase: 24, fromLocationId: a, quantity: 100001 }],
     });
     expect(r.success).toBe(false);
     expect(r.error?.issues[0].message).toBe('本数が大きすぎます');
@@ -72,7 +82,7 @@ describe('entrySchema', () => {
     const r = entrySchema.safeParse({
       batchId: a,
       confirmNegative: false,
-      items: [{ type: 'adjust', drinkId: drink, toLocationId: a, countedQuantity: 100001 }],
+      items: [{ type: 'adjust', drinkId: drink, unitsPerCase: 24, toLocationId: a, countedQuantity: 100001 }],
     });
     expect(r.success).toBe(false);
     expect(r.error?.issues[0].message).toBe('本数が大きすぎます');
@@ -81,7 +91,7 @@ describe('entrySchema', () => {
 
 describe('toMovementInput', () => {
   it('fills in nulls and the shared note', () => {
-    expect(toMovementInput({ type: 'sale', drinkId: drink, fromLocationId: a, quantity: 2 }, '営業後')).toEqual({
+    expect(toMovementInput({ type: 'sale', drinkId: drink, unitsPerCase: 24, fromLocationId: a, quantity: 2 }, '営業後')).toEqual({
       type: 'sale',
       drinkId: drink,
       fromLocationId: a,

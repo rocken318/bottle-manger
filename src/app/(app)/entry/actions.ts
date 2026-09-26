@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireStaff } from '@/lib/auth/current';
 import { getDb } from '@/lib/db/client';
+import { findUnitsPerCaseMismatches } from '@/lib/entryItems';
 import { toUserMessage } from '@/lib/errors';
 import { listDrinks } from '@/lib/repo/drinks';
 import { listLocations } from '@/lib/repo/locations';
@@ -31,13 +32,17 @@ export async function submitEntry(payload: unknown): Promise<EntryResult> {
       return { status: 'ok', count: 0, alreadySaved: true };
     }
 
+    const drinks = await listDrinks(db, { includeInactive: true });
+    // Quantities were converted from cases with the units per case shown on the client;
+    // if a drink was edited since, the bottle counts may be wrong, so refuse the whole batch.
+    if (findUnitsPerCaseMismatches(parsed.data.items, drinks).length > 0) {
+      return { status: 'error', message: '1ケースの本数が変更されました。画面を再読み込みしてください' };
+    }
+
     if (!confirmNegative) {
       const negatives = findNegativeResults(await getStockLevels(db), items);
       if (negatives.length > 0) {
-        const [drinks, locations] = await Promise.all([
-          listDrinks(db, { includeInactive: true }),
-          listLocations(db, { includeInactive: true }),
-        ]);
+        const locations = await listLocations(db, { includeInactive: true });
         const drinkName = new Map(drinks.map((d) => [d.id, d.name]));
         const locationName = new Map(locations.map((l) => [l.id, l.name]));
         return {

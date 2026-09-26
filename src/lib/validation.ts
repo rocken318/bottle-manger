@@ -13,13 +13,25 @@ export const pinSchema = z.string().regex(/^\d{4,6}$/, 'PINは4〜6桁の数字�
 export const roleSchema = z.enum(['admin', 'staff']);
 export const idSchema = uuid;
 
+// The units per case the client used to turn cases into bottles; the server rejects the batch
+// if it no longer matches the drink (it was edited while the entry page was open).
+const unitsPerCase = z.number().int('1ケースの本数が正しくありません').min(1, '1ケースの本数が正しくありません');
+
 export const movementItemSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('receive'), drinkId: uuid, toLocationId: uuid, quantity }),
-  z.object({ type: z.literal('sale'), drinkId: uuid, fromLocationId: uuid, quantity }),
-  z.object({ type: z.literal('transfer'), drinkId: uuid, fromLocationId: uuid, toLocationId: uuid, quantity }),
+  z.object({ type: z.literal('receive'), drinkId: uuid, unitsPerCase, toLocationId: uuid, quantity }),
+  z.object({ type: z.literal('sale'), drinkId: uuid, unitsPerCase, fromLocationId: uuid, quantity }),
+  z.object({
+    type: z.literal('transfer'),
+    drinkId: uuid,
+    unitsPerCase,
+    fromLocationId: uuid,
+    toLocationId: uuid,
+    quantity,
+  }),
   z.object({
     type: z.literal('adjust'),
     drinkId: uuid,
+    unitsPerCase,
     toLocationId: uuid,
     countedQuantity: z
       .number()

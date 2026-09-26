@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildEntryItems } from '@/lib/entryItems';
+import { buildEntryItems, findUnitsPerCaseMismatches, parseCount } from '@/lib/entryItems';
 import type { Drink } from '@/lib/types';
 
 const loc = '0b8f5c1e-1f4a-4c1e-9d2a-2b3c4d5e6f70';
@@ -24,7 +24,7 @@ describe('buildEntryItems', () => {
       drinks,
       quantities: { [cola.id]: { cases: '2', bottles: '3' }, [beer.id]: { cases: '', bottles: ' ' } },
     });
-    expect(r).toEqual({ items: [{ type: 'receive', drinkId: cola.id, toLocationId: loc, quantity: 51 }] });
+    expect(r).toEqual({ items: [{ type: 'receive', drinkId: cola.id, unitsPerCase: 24, toLocationId: loc, quantity: 51 }] });
   });
 
   it('builds sale and transfer items', () => {
@@ -36,7 +36,7 @@ describe('buildEntryItems', () => {
         drinks,
         quantities: { [beer.id]: { cases: '1', bottles: '' } },
       }),
-    ).toEqual({ items: [{ type: 'sale', drinkId: beer.id, fromLocationId: loc, quantity: 12 }] });
+    ).toEqual({ items: [{ type: 'sale', drinkId: beer.id, unitsPerCase: 12, fromLocationId: loc, quantity: 12 }] });
     expect(
       buildEntryItems({
         type: 'transfer',
@@ -47,8 +47,8 @@ describe('buildEntryItems', () => {
       }),
     ).toEqual({
       items: [
-        { type: 'transfer', drinkId: cola.id, fromLocationId: loc, toLocationId: dest, quantity: 5 },
-        { type: 'transfer', drinkId: beer.id, fromLocationId: loc, toLocationId: dest, quantity: 1 },
+        { type: 'transfer', drinkId: cola.id, unitsPerCase: 24, fromLocationId: loc, toLocationId: dest, quantity: 5 },
+        { type: 'transfer', drinkId: beer.id, unitsPerCase: 12, fromLocationId: loc, toLocationId: dest, quantity: 1 },
       ],
     });
   });
@@ -62,7 +62,7 @@ describe('buildEntryItems', () => {
         drinks,
         quantities: { [cola.id]: { cases: '0', bottles: '' } },
       }),
-    ).toEqual({ items: [{ type: 'adjust', drinkId: cola.id, toLocationId: loc, countedQuantity: 0 }] });
+    ).toEqual({ items: [{ type: 'adjust', drinkId: cola.id, unitsPerCase: 24, toLocationId: loc, countedQuantity: 0 }] });
   });
 
   it('rejects a filled row totaling zero for receive/sale/transfer', () => {
@@ -84,6 +84,9 @@ describe('buildEntryItems', () => {
       { cases: '-1', bottles: '' },
       { cases: '', bottles: '1.5' },
       { cases: 'abc', bottles: '' },
+      { cases: '1e3', bottles: '' },
+      { cases: '', bottles: '+5' },
+      { cases: '0x10', bottles: '' },
     ]) {
       expect(
         buildEntryItems({ type: 'adjust', locationId: loc, destinationId: dest, drinks, quantities: { [beer.id]: q } }),
@@ -126,5 +129,49 @@ describe('buildEntryItems', () => {
     expect(buildEntryItems({ type: 'transfer', locationId: loc, destinationId: '', drinks, quantities })).toEqual({
       error: '移動先の拠点がありません',
     });
+  });
+
+  it('rejects a total above 100000 bottles', () => {
+    expect(
+      buildEntryItems({
+        type: 'receive',
+        locationId: loc,
+        destinationId: dest,
+        drinks,
+        quantities: { [cola.id]: { cases: '4167', bottles: '' } },
+      }),
+    ).toEqual({ error: 'コーラの本数が大きすぎます' });
+    expect(
+      buildEntryItems({
+        type: 'adjust',
+        locationId: loc,
+        destinationId: dest,
+        drinks,
+        quantities: { [cola.id]: { cases: '', bottles: '100000' } },
+      }),
+    ).toEqual({ items: [{ type: 'adjust', drinkId: cola.id, unitsPerCase: 24, toLocationId: loc, countedQuantity: 100000 }] });
+  });
+});
+
+describe('parseCount', () => {
+  it('accepts only plain digits (blank is 0)', () => {
+    expect(parseCount('')).toBe(0);
+    expect(parseCount(' 12 ')).toBe(12);
+    expect(parseCount('007')).toBe(7);
+    for (const bad of ['1e3', '-1', '1.5', '+1', 'abc', '0x10', '1 2']) expect(parseCount(bad)).toBeNaN();
+  });
+});
+
+describe('findUnitsPerCaseMismatches', () => {
+  it('returns the drinks whose units per case changed since the page was loaded', () => {
+    const items = [
+      { drinkId: cola.id, unitsPerCase: 24 },
+      { drinkId: beer.id, unitsPerCase: 24 },
+    ];
+    expect(findUnitsPerCaseMismatches(items, drinks)).toEqual([beer.id]);
+    expect(findUnitsPerCaseMismatches([{ drinkId: cola.id, unitsPerCase: 24 }], drinks)).toEqual([]);
+  });
+  it('ignores drinks it does not know (left to the database checks)', () => {
+    expect(findUnitsPerCaseMismatches([{ drinkId: crypto.randomUUID(), unitsPerCase: 6 }], drinks)).toEqual([]);
   });
 });
