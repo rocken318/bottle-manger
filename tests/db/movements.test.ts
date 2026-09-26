@@ -47,6 +47,12 @@ describe('movements repository', () => {
     expect(await listMovements(db, { toDate: '2000-01-01' }, 100)).toEqual([]);
   });
 
+  it('clamps out-of-range limits instead of erroring', async () => {
+    expect((await listMovements(db, {}, 0)).length).toBeGreaterThan(0);
+    expect((await listMovements(db, {}, -5)).length).toBeGreaterThan(0);
+    await expect(listMovements(db, {}, 999999)).resolves.not.toThrow();
+  });
+
   it('voids a movement and shows who voided it', async () => {
     const [latest] = await listMovements(db, {}, 1);
     const target = await getMovementForVoid(db, latest.id);

@@ -13,7 +13,9 @@ export async function attemptLogin(db: Db, staffId: string, pin: string): Promis
     return { ok: false, reason: staff?.isActive ? 'locked' : 'invalid' };
   }
   if (!mayVerify(attempt)) {
-    await lockStaff(db, staffId);
+    if (await lockStaff(db, staffId)) {
+      await writeAudit(db, { staffId, action: 'login.locked', targetType: 'staff', targetId: staffId });
+    }
     return { ok: false, reason: 'locked' };
   }
 
@@ -24,8 +26,9 @@ export async function attemptLogin(db: Db, staffId: string, pin: string): Promis
   }
 
   if (shouldLockAfterFailure(attempt)) {
-    await lockStaff(db, staffId);
-    await writeAudit(db, { staffId, action: 'login.locked', targetType: 'staff', targetId: staffId });
+    if (await lockStaff(db, staffId)) {
+      await writeAudit(db, { staffId, action: 'login.locked', targetType: 'staff', targetId: staffId });
+    }
     return { ok: false, reason: 'locked' };
   }
   return { ok: false, reason: 'invalid' };

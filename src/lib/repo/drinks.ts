@@ -33,10 +33,14 @@ export async function createDrink(
 export async function setDrinkActive(db: Db, actorId: string, id: string, isActive: boolean): Promise<void> {
   await db.transaction(async (tx) => {
     const rows = await tx.query<{ name: string }>(
-      'update drinks set is_active = $2 where id = $1 returning name',
+      'update drinks set is_active = $2 where id = $1 and is_active <> $2 returning name',
       [id, isActive],
     );
-    if (rows.length === 0) throw new Error('drink_not_found');
+    if (rows.length === 0) {
+      const [existing] = await tx.query<{ id: string }>('select id from drinks where id = $1', [id]);
+      if (!existing) throw new Error('drink_not_found');
+      return;
+    }
     await writeAudit(tx, {
       staffId: actorId,
       action: isActive ? 'drink.activate' : 'drink.deactivate',

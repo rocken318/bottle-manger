@@ -1,5 +1,6 @@
 import { createPostgresDb } from '../src/lib/db/postgres';
 import { createStaff } from '../src/lib/repo/staff';
+import { toUserMessage } from '../src/lib/errors';
 
 const [name, pin, homeLocationName] = process.argv.slice(2);
 if (!name || !pin) {
@@ -15,13 +16,22 @@ if (!url) {
 const db = createPostgresDb(url);
 let homeLocationId: string | null = null;
 if (homeLocationName) {
-  const rows = await db.query<{ id: string }>('select id from locations where name = $1', [homeLocationName]);
+  const rows = await db.query<{ id: string }>(
+    'select id from locations where name = $1 and is_active',
+    [homeLocationName],
+  );
   if (!rows[0]) {
     console.error(`拠点が見つかりません: ${homeLocationName}`);
     process.exit(1);
   }
   homeLocationId = rows[0].id;
 }
-const staff = await createStaff(db, null, { name, pin, role: 'admin', homeLocationId });
-console.log(`created admin: ${staff.name} (${staff.id})`);
-process.exit(0);
+// Note: the PIN passed here appears in shell history. Change it from the admin screen afterwards.
+try {
+  const staff = await createStaff(db, null, { name, pin, role: 'admin', homeLocationId });
+  console.log(`created admin: ${staff.name} (${staff.id})`);
+  process.exit(0);
+} catch (e) {
+  console.error(toUserMessage(e));
+  process.exit(1);
+}

@@ -4,6 +4,7 @@ import type { MovementFilter } from '../movementFilter';
 import type { Movement } from '../types';
 
 export async function listMovements(db: Db, filter: MovementFilter, limit: number): Promise<Movement[]> {
+  const safe = Math.min(Math.max(1, Math.trunc(limit) || 1), 50000);
   const where: string[] = [];
   const params: unknown[] = [];
   const add = (sql: (p: string) => string, value: unknown) => {
@@ -16,7 +17,7 @@ export async function listMovements(db: Db, filter: MovementFilter, limit: numbe
   if (filter.type) add((p) => `m.type = ${p}`, filter.type);
   if (filter.fromDate) add((p) => `m.created_at >= ${p}::timestamptz`, jstDayStart(filter.fromDate).toISOString());
   if (filter.toDate) add((p) => `m.created_at < ${p}::timestamptz`, jstNextDayStart(filter.toDate).toISOString());
-  params.push(limit);
+  params.push(safe);
 
   return db.query<Movement>(
     `select m.id, m.batch_id as "batchId", m.type, m.drink_id as "drinkId", d.name as "drinkName",
@@ -33,7 +34,7 @@ export async function listMovements(db: Db, filter: MovementFilter, limit: numbe
        left join locations tl on tl.id = m.to_location_id
        left join staff vs on vs.id = m.voided_by
       ${where.length ? `where ${where.join(' and ')}` : ''}
-      order by m.created_at desc, m.line_no
+      order by m.created_at desc, m.batch_id, m.line_no
       limit $${params.length}`,
     params,
   );

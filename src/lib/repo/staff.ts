@@ -43,11 +43,15 @@ export async function recordPinSuccess(db: Db, id: string): Promise<void> {
   await db.query('update staff set failed_pin_attempts = 0, locked_until = null where id = $1', [id]);
 }
 
-export async function lockStaff(db: Db, id: string): Promise<void> {
-  await db.query(
-    `update staff set failed_pin_attempts = 0, locked_until = now() + make_interval(secs => $2) where id = $1`,
+/** Locks the account only if it is not already locked. Returns whether it locked it. */
+export async function lockStaff(db: Db, id: string): Promise<boolean> {
+  const rows = await db.query<{ id: string }>(
+    `update staff set failed_pin_attempts = 0, locked_until = now() + make_interval(secs => $2)
+      where id = $1 and (locked_until is null or locked_until <= now())
+      returning id`,
     [id, LOCK_DURATION_SECONDS],
   );
+  return rows.length > 0;
 }
 
 export async function createStaff(
@@ -80,6 +84,23 @@ export async function updateStaff(
 ): Promise<void> {
   if (input.id === actorId && (input.role !== 'admin' || !input.isActive)) throw new Error('cannot_demote_self');
   await db.transaction(async (tx) => {
+    await tx.query(`select pg_advisory_xact_lock(hashtextextended('admin-guard', 0))`);
+
+    const willBeActiveAdmin = input.role === 'admin' && input.isActive;
+    if (!willBeActiveAdmin) {
+      const [current] = await tx.query<{ role: Role; isActive: boolean }>(
+        `select role, is_active as "isActive" from staff where id = $1`,
+        [input.id],
+      );
+      if (current?.role === 'admin' && current.isActive) {
+        const [{ exists: hasOtherAdmin }] = await tx.query<{ exists: boolean }>(
+          `select exists(select 1 from staff where role = 'admin' and is_active and id <> $1) as exists`,
+          [input.id],
+        );
+        if (!hasOtherAdmin) throw new Error('last_admin');
+      }
+    }
+
     const rows = await tx.query(
       `update staff set name = $2, role = $3, home_location_id = $4, is_active = $5, updated_at = now()
         where id = $1 returning id`,

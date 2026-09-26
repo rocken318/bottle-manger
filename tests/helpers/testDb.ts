@@ -1,12 +1,16 @@
+import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
+import { inject } from 'vitest';
 import { wrapPglite } from '@/lib/db/pglite';
-import { runMigrations } from '@/lib/db/migrate';
 import type { Db } from '@/lib/db/types';
 
+let snapshot: Promise<Blob> | undefined;
+
+/** Boots a fresh PGlite from the already-migrated data dir built in tests/globalSetup.ts. */
 export async function createTestDb(): Promise<Db> {
-  const db = wrapPglite(new PGlite());
-  await runMigrations(db);
-  return db;
+  snapshot ??= readFile(inject('pgliteSnapshot')).then((b) => new Blob([b]));
+  const pg = new PGlite({ loadDataDir: await snapshot });
+  return wrapPglite(pg);
 }
 
 export async function locationIdByName(db: Db, name: string): Promise<string> {

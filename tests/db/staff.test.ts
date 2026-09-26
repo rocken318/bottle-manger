@@ -6,6 +6,7 @@ import {
   getStaffById,
   listLoginNames,
   listStaff,
+  lockStaff,
   resetPin,
   unlockStaff,
   updateStaff,
@@ -67,11 +68,59 @@ describe('staff repository', () => {
     expect(await verifyPin('9999', row.pin_hash)).toBe(true);
   });
 
+  it('prevents demoting the last remaining active admin', async () => {
+    const staffMember = await createStaff(db, adminId, {
+      name: '花子',
+      pin: '5678',
+      role: 'staff',
+      homeLocationId: null,
+    });
+    await expect(
+      updateStaff(db, staffMember.id, {
+        id: adminId,
+        name: '管理者',
+        role: 'staff',
+        homeLocationId: null,
+        isActive: true,
+      }),
+    ).rejects.toThrow('last_admin');
+    await expect(
+      updateStaff(db, staffMember.id, {
+        id: adminId,
+        name: '管理者',
+        role: 'admin',
+        homeLocationId: null,
+        isActive: false,
+      }),
+    ).rejects.toThrow('last_admin');
+  });
+
+  it('allows demoting an admin when another active admin remains', async () => {
+    const b = await createStaff(db, adminId, { name: 'B', pin: '2222', role: 'admin', homeLocationId: null });
+    await updateStaff(db, adminId, { id: b.id, name: 'B', role: 'staff', homeLocationId: null, isActive: true });
+    expect((await getStaffById(db, b.id))?.role).toBe('staff');
+  });
+
+  it('locks a staff member only if not already locked', async () => {
+    const s = await createStaff(db, adminId, { name: '花子', pin: '5678', role: 'staff', homeLocationId: null });
+    expect(await lockStaff(db, s.id)).toBe(true);
+    const first = (await getStaffById(db, s.id))?.lockedUntil;
+    expect(await lockStaff(db, s.id)).toBe(false);
+    const second = (await getStaffById(db, s.id))?.lockedUntil;
+    expect(second?.getTime()).toBe(first?.getTime());
+  });
+
   it('unlocks staff', async () => {
     const s = await createStaff(db, adminId, { name: '花子', pin: '5678', role: 'staff', homeLocationId: null });
     await db.query(`update staff set locked_until = now() + interval '1 hour' where id = $1`, [s.id]);
     await unlockStaff(db, adminId, s.id);
     expect((await getStaffById(db, s.id))?.lockedUntil).toBeNull();
     expect((await listAuditLogs(db, 1))[0].action).toBe('staff.unlock');
+  });
+
+  it('clamps out-of-range audit log limits instead of erroring', async () => {
+    await expect(listAuditLogs(db, 0)).resolves.not.toThrow();
+    await expect(listAuditLogs(db, -1)).resolves.not.toThrow();
+    await expect(listAuditLogs(db, 999999)).resolves.not.toThrow();
   });
 });

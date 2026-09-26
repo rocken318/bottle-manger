@@ -44,4 +44,17 @@ describe('attemptLogin', () => {
     await updateStaff(db, staffId, { id: other.id, name: '太郎', role: 'staff', homeLocationId: null, isActive: false });
     expect(await attemptLogin(db, other.id, '1111')).toEqual({ ok: false, reason: 'invalid' });
   });
+
+  it('writes exactly one login.locked audit row when the counter is already at the limit, and none on a repeat while locked', async () => {
+    await db.query('update staff set failed_pin_attempts = 5 where id = $1', [staffId]);
+    expect(await attemptLogin(db, staffId, '0000')).toEqual({ ok: false, reason: 'locked' });
+    const locked = await db.query<{ action: string }>(`select action from audit_logs where action = 'login.locked'`);
+    expect(locked).toHaveLength(1);
+
+    expect(await attemptLogin(db, staffId, '5678')).toEqual({ ok: false, reason: 'locked' });
+    const lockedAfter = await db.query<{ action: string }>(
+      `select action from audit_logs where action = 'login.locked'`,
+    );
+    expect(lockedAfter).toHaveLength(1);
+  });
 });

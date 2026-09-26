@@ -34,4 +34,19 @@ describe('drinks repository', () => {
       code: '23505',
     });
   });
+
+  it('does not write a duplicate audit row when already in the requested state', async () => {
+    const d = await createDrink(db, staffId, { name: 'コーラ', unitsPerCase: 24 });
+    await setDrinkActive(db, staffId, d.id, false);
+    const countAfterFirst = (await listAuditLogs(db, 100)).filter((l) => l.action === 'drink.deactivate').length;
+    expect(countAfterFirst).toBe(1);
+
+    await setDrinkActive(db, staffId, d.id, false);
+    const countAfterSecond = (await listAuditLogs(db, 100)).filter((l) => l.action === 'drink.deactivate').length;
+    expect(countAfterSecond).toBe(1);
+  });
+
+  it('throws drink_not_found for a missing drink', async () => {
+    await expect(setDrinkActive(db, staffId, crypto.randomUUID(), false)).rejects.toThrow('drink_not_found');
+  });
 });

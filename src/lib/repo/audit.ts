@@ -27,6 +27,7 @@ export async function writeAudit(db: Db, entry: AuditEntry): Promise<void> {
 }
 
 export async function listAuditLogs(db: Db, limit: number): Promise<AuditLog[]> {
+  const safe = Math.min(Math.max(1, Math.trunc(limit) || 1), 50000);
   return db.query<AuditLog>(
     `select a.id, s.name as "staffName", a.action, a.target_type as "targetType",
             a.target_id as "targetId", a.details, a.created_at as "createdAt"
@@ -34,6 +35,6 @@ export async function listAuditLogs(db: Db, limit: number): Promise<AuditLog[]> 
        left join staff s on s.id = a.staff_id
       order by a.created_at desc, a.id
       limit $1`,
-    [limit],
+    [safe],
   );
 }

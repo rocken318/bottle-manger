@@ -68,7 +68,7 @@ create table audit_logs (
   target_type text not null,
   target_id uuid,
   details jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default clock_timestamp()
 );
 create index audit_logs_created_idx on audit_logs (created_at desc);
 
