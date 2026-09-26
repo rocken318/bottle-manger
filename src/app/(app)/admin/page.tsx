@@ -12,6 +12,8 @@ const ACTION_LABELS: Record<string, string> = {
   'drink.create': 'ドリンク登録',
   'drink.deactivate': 'ドリンク廃止',
   'drink.activate': 'ドリンク復活',
+  'drink.update': 'ドリンク編集',
+  'staff.change_pin': '自分のPIN変更',
   'location.create': '拠点追加',
   'location.update': '拠点変更',
   'movement.void': '在庫記録の取り消し',

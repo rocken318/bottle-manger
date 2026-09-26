@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { requireStaff } from '@/lib/auth/current';
 import { getDb } from '@/lib/db/client';
 import { listDrinks } from '@/lib/repo/drinks';
-import { DrinkActiveToggle } from './DrinkActiveToggle';
 import { DrinkCreateForm } from './DrinkCreateForm';
+import { DrinkRow } from './DrinkRow';
 
 export default async function DrinksPage({
   searchParams,
@@ -26,13 +26,7 @@ export default async function DrinksPage({
       </div>
       <ul className="divide-y rounded border bg-white">
         {drinks.map((d) => (
-          <li key={d.id} className="flex items-center justify-between px-3 py-3">
-            <span className={d.isActive ? '' : 'text-gray-400 line-through'}>
-              {d.name}
-              <span className="ml-2 text-xs text-gray-500">1ケース{d.unitsPerCase}本</span>
-            </span>
-            {isAdmin && <DrinkActiveToggle id={d.id} isActive={d.isActive} />}
-          </li>
+          <DrinkRow key={d.id} drink={d} isAdmin={isAdmin} />
         ))}
       </ul>
     </div>

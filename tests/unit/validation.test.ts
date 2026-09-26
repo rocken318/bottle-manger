@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { entrySchema, locationSchema, locationUpdateSchema, staffCreateSchema, toMovementInput } from '@/lib/validation';
+import {
+  drinkUpdateSchema,
+  entrySchema,
+  locationSchema,
+  locationUpdateSchema,
+  staffCreateSchema,
+  toMovementInput,
+} from '@/lib/validation';
 
 const a = '0b8f5c1e-1f4a-4c1e-9d2a-2b3c4d5e6f70';
 const b = '1b8f5c1e-1f4a-4c1e-9d2a-2b3c4d5e6f71';
@@ -122,5 +129,16 @@ describe('locationUpdateSchema', () => {
   it('rejects a missing isActive', () => {
     const r = locationUpdateSchema.safeParse({ id: a, name: '倉庫', sortOrder: 1 });
     expect(r.success).toBe(false);
+  });
+});
+
+describe('drinkUpdateSchema', () => {
+  it('accepts an id, a name and units per case', () => {
+    const r = drinkUpdateSchema.safeParse({ id: a, name: ' コーラ500 ', unitsPerCase: '12' });
+    expect(r.success).toBe(true);
+    expect(r.data).toEqual({ id: a, name: 'コーラ500', unitsPerCase: 12 });
+  });
+  it('rejects a missing id', () => {
+    expect(drinkUpdateSchema.safeParse({ id: 'x', name: 'コーラ', unitsPerCase: 24 }).success).toBe(false);
   });
 });

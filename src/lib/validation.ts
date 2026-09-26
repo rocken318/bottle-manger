@@ -83,6 +83,8 @@ export const drinkCreateSchema = z.object({
     .max(1000, '1ケースの本数が大きすぎます'),
 });
 
+export const drinkUpdateSchema = drinkCreateSchema.extend({ id: idSchema });
+
 export const locationSchema = z.object({
   name,
   sortOrder: z.coerce

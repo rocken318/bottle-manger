@@ -63,3 +63,34 @@ export async function setDrinkActive(db: Db, actorId: string, id: string, isActi
     });
   });
 }
+
+export async function updateDrink(
+  db: Db,
+  actorId: string,
+  input: { id: string; name: string; unitsPerCase: number },
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [before] = await tx.query<{ name: string; unitsPerCase: number }>(
+      'select name, units_per_case as "unitsPerCase" from drinks where id = $1 for update',
+      [input.id],
+    );
+    if (!before) throw new Error('drink_not_found');
+    if (before.name === input.name && before.unitsPerCase === input.unitsPerCase) return;
+    await tx.query('update drinks set name = $2, units_per_case = $3 where id = $1', [
+      input.id,
+      input.name,
+      input.unitsPerCase,
+    ]);
+    await writeAudit(tx, {
+      staffId: actorId,
+      action: 'drink.update',
+      targetType: 'drink',
+      targetId: input.id,
+      details: {
+        name: input.name,
+        before: { name: before.name, unitsPerCase: before.unitsPerCase },
+        after: { name: input.name, unitsPerCase: input.unitsPerCase },
+      },
+    });
+  });
+}
