@@ -59,10 +59,15 @@ export async function applyMovements(
     counted_quantity: i.countedQuantity,
     note: i.note,
   }));
+  // Pass the payload as a plain array/object, not a pre-serialized JSON string: the postgres
+  // driver then tags the parameter as jsonb itself, which round-trips correctly everywhere.
+  // (A pre-stringified value combined with an `::jsonb` cast on the bound parameter is
+  // double-encoded by at least one Postgres wire-protocol implementation we run against,
+  // producing a jsonb *string* instead of an array.)
   const rows = await db.query<{ id: string }>('select id from apply_movements($1, $2, $3::jsonb)', [
     batchId,
     staffId,
-    JSON.stringify(payload),
+    payload,
   ]);
   return rows.map((r) => r.id);
 }

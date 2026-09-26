@@ -19,10 +19,12 @@ export interface AuditLog {
 }
 
 export async function writeAudit(db: Db, entry: AuditEntry): Promise<void> {
+  // See the comment in repo/stock.ts's applyMovements: pass the plain object here (not a
+  // pre-serialized JSON string) so the driver tags the parameter as jsonb itself.
   await db.query(
     `insert into audit_logs (staff_id, action, target_type, target_id, details)
      values ($1, $2, $3, $4, $5::jsonb)`,
-    [entry.staffId, entry.action, entry.targetType, entry.targetId, JSON.stringify(entry.details ?? {})],
+    [entry.staffId, entry.action, entry.targetType, entry.targetId, entry.details ?? {}],
   );
 }
 
