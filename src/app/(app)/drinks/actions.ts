@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
 import { requireAdmin, requireStaff } from '@/lib/auth/current';
 import { getDb } from '@/lib/db/client';
 import { toUserMessage } from '@/lib/errors';
@@ -24,10 +25,23 @@ export async function createDrinkAction(_prev: FormState, formData: FormData): P
   return { message: `${parsed.data.name} を登録しました` };
 }
 
+const setDrinkActiveSchema = z.object({
+  id: z.string().uuid(),
+  isActive: z.enum(['true', 'false']),
+});
+
 export async function setDrinkActiveAction(formData: FormData): Promise<void> {
   const admin = await requireAdmin();
-  const id = String(formData.get('id') ?? '');
-  const isActive = formData.get('isActive') === 'true';
-  await setDrinkActive(getDb(), admin.id, id, isActive);
+  const parsed = setDrinkActiveSchema.safeParse({
+    id: formData.get('id'),
+    isActive: formData.get('isActive'),
+  });
+  if (!parsed.success) return;
+  try {
+    await setDrinkActive(getDb(), admin.id, parsed.data.id, parsed.data.isActive === 'true');
+  } catch (e) {
+    console.error(e);
+    return;
+  }
   revalidatePath('/', 'layout');
 }

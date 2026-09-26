@@ -50,9 +50,9 @@ export function StockView({ locations, drinks, levels, defaultLocationId }: Prop
         </label>
       </div>
 
-      {visible.length === 0 && <p className="text-gray-500">該当するドリンクがありません</p>}
-
-      {locationId === 'all' ? (
+      {visible.length === 0 ? (
+        <p className="text-gray-500">該当するドリンクがありません</p>
+      ) : locationId === 'all' ? (
         <div className="overflow-x-auto rounded border bg-white">
           <table className="min-w-full text-sm">
             <thead className="bg-gray-100">
@@ -79,12 +79,17 @@ export function StockView({ locations, drinks, levels, defaultLocationId }: Prop
                     {locations.map((l) => {
                       const n = qty(l.id, d.id);
                       return (
-                        <td key={l.id} className={`whitespace-nowrap px-3 py-2 text-right ${n < 0 ? 'text-red-600' : ''}`}>
+                        <td
+                          key={l.id}
+                          className={`whitespace-nowrap px-3 py-2 text-right ${n < 0 ? 'font-bold text-red-600' : ''}`}
+                        >
                           {formatQuantity(n, d.unitsPerCase)}
                         </td>
                       );
                     })}
-                    <td className="whitespace-nowrap px-3 py-2 text-right font-bold">
+                    <td
+                      className={`whitespace-nowrap px-3 py-2 text-right font-bold ${total < 0 ? 'text-red-600' : ''}`}
+                    >
                       {formatQuantity(total, d.unitsPerCase)}
                     </td>
                   </tr>
