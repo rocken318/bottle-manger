@@ -31,6 +31,10 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
   const [note, setNote] = useState('');
   const [batchId, setBatchId] = useState(() => crypto.randomUUID());
   const [warnings, setWarnings] = useState<string[] | null>(null);
+  // Names of filled rows hidden by the search filter, shown for confirmation before submitting.
+  const [hiddenConfirm, setHiddenConfirm] = useState<string[] | null>(null);
+  // Tab the user wants to switch to while rows are filled (asks before clearing them).
+  const [pendingType, setPendingType] = useState<MovementType | null>(null);
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -42,8 +46,12 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
   const stockOf = (loc: string, drink: string) => stock.get(`${loc}:${drink}`) ?? 0;
 
   const transferUnavailable = type === 'transfer' && locations.length < 2;
-  const visible = drinks.filter((d) => matchesSearch(d.name, query));
-  const filledCount = drinks.filter((d) => isFilled(quantities[d.id])).length;
+  const visible = useMemo(() => drinks.filter((d) => matchesSearch(d.name, query)), [drinks, query]);
+  const filled = useMemo(() => drinks.filter((d) => isFilled(quantities[d.id])), [drinks, quantities]);
+  const hiddenFilled = useMemo(() => {
+    const shown = new Set(visible.map((d) => d.id));
+    return filled.filter((d) => !shown.has(d.id));
+  }, [visible, filled]);
 
   // If the locations list changes (e.g. after a revalidate deactivates the one currently
   // selected), fall back to a location that still exists instead of holding a stale id.
@@ -61,14 +69,35 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
 
   const resetFeedback = () => {
     setWarnings(null);
+    setHiddenConfirm(null);
     setMessage(null);
+  };
+  const changeQuery = (next: string) => {
+    setQuery(next);
+    // What is hidden changes with the filter, so any pending confirmation is stale.
+    setWarnings(null);
+    setHiddenConfirm(null);
+  };
+  const switchType = (next: MovementType) => {
+    resetFeedback();
+    setPendingType(null);
+    if (next !== type) setQuantities({});
+    setType(next);
+  };
+  const requestType = (next: MovementType) => {
+    if (next === type) return;
+    if (filled.length > 0) {
+      setPendingType(next);
+      return;
+    }
+    switchType(next);
   };
   const updateQuantity = (drinkId: string, patch: Partial<EntryQuantity>) => {
     resetFeedback();
     setQuantities((prev) => ({ ...prev, [drinkId]: { ...(prev[drinkId] ?? EMPTY), ...patch } }));
   };
 
-  function submit(confirmNegative: boolean) {
+  function submit(confirmNegative: boolean, confirmHidden: boolean) {
     if (transferUnavailable) {
       setMessage({ kind: 'error', text: '移動先の拠点がありません' });
       return;
@@ -78,6 +107,13 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
       setMessage({ kind: 'error', text: built.error });
       return;
     }
+    if (!confirmHidden && hiddenFilled.length > 0) {
+      setMessage(null);
+      setHiddenConfirm(hiddenFilled.map((d) => d.name));
+      return;
+    }
+    setHiddenConfirm(null);
+    const typeLabel = MOVEMENT_TYPE_LABELS[type];
     startTransition(async () => {
       try {
         const res = await submitEntry({ batchId, confirmNegative, note: note || undefined, items: built.items });
@@ -100,7 +136,7 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
           setBatchId(crypto.randomUUID());
           return;
         }
-        setMessage({ kind: 'ok', text: `${res.count}件登録しました` });
+        setMessage({ kind: 'ok', text: `${typeLabel} ${res.count}件登録しました` });
         setQuantities({});
         setNote('');
         setBatchId(crypto.randomUUID());
@@ -120,16 +156,33 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
             key={t}
             type="button"
             aria-pressed={type === t}
-            onClick={() => {
-              resetFeedback();
-              setType(t);
-            }}
+            onClick={() => requestType(t)}
             className={`rounded py-2 text-sm ${type === t ? 'bg-white font-bold shadow' : 'text-gray-600'}`}
           >
             {MOVEMENT_TYPE_LABELS[t]}
           </button>
         ))}
       </div>
+
+      {pendingType && (
+        <div className="space-y-2 rounded border border-yellow-400 bg-yellow-50 p-3 text-sm">
+          <p className="font-bold">
+            入力中の{filled.length}件を消して「{MOVEMENT_TYPE_LABELS[pendingType]}」に切り替えますか？
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => switchType(pendingType)}
+              className="rounded bg-yellow-500 px-4 py-2 font-bold text-white"
+            >
+              消して切り替える
+            </button>
+            <button type="button" onClick={() => setPendingType(null)} className="rounded border bg-white px-4 py-2">
+              やめる
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-3">
         <label className="flex-1">
@@ -184,16 +237,26 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
             <p className="text-sm text-gray-600">実際に数えた数を入力してください（入力したドリンクだけ登録されます）。</p>
           )}
 
-          <div className="flex items-center gap-2">
+          <div className="space-y-1">
             <input
               type="search"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => changeQuery(e.target.value)}
               placeholder="ドリンク名で絞り込み"
               aria-label="絞り込み"
-              className="min-w-0 flex-1 rounded border bg-white px-3 py-2"
+              className="w-full rounded border bg-white px-3 py-2"
             />
-            <span className="shrink-0 text-xs text-gray-600">入力中 {filledCount}件</span>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+              <span>
+                入力中 {filled.length}件
+                {hiddenFilled.length > 0 && `（うち ${hiddenFilled.length}件は絞り込みで非表示）`}
+              </span>
+              {hiddenFilled.length > 0 && (
+                <button type="button" onClick={() => changeQuery('')} className="text-blue-700 underline">
+                  入力済みを表示
+                </button>
+              )}
+            </div>
           </div>
 
           {visible.length === 0 ? (
@@ -211,18 +274,18 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
                 <tbody>
                   {visible.map((drink) => {
                     const q = quantities[drink.id] ?? EMPTY;
-                    const filled = isFilled(q);
+                    const rowFilled = isFilled(q);
                     const book = stockOf(locationId, drink.id);
                     const counted = rowTotal(q, drink.unitsPerCase);
                     const diff = counted - book;
                     return (
-                      <tr key={drink.id} className={`border-t ${filled ? 'bg-blue-50' : ''}`}>
+                      <tr key={drink.id} className={`border-t ${rowFilled ? 'bg-blue-50' : ''}`}>
                         <td className="px-2 py-2">
                           <span className="block break-all">{drink.name}</span>
                           <span className="block text-xs text-gray-600">
                             帳簿 {formatQuantity(book, drink.unitsPerCase)}
                             {type === 'adjust' &&
-                              filled &&
+                              rowFilled &&
                               !Number.isNaN(counted) &&
                               ` → 差 ${diff >= 0 ? '+' : '−'}${Math.abs(diff)}本`}
                           </span>
@@ -269,6 +332,24 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
         </>
       )}
 
+      {hiddenConfirm && (
+        <div className="space-y-2 rounded border border-yellow-400 bg-yellow-50 p-3 text-sm">
+          <p className="font-bold">絞り込みで表示されていない入力があります。これも登録しますか？</p>
+          <ul className="list-disc pl-5">
+            {hiddenConfirm.map((name) => (
+              <li key={name}>{name}</li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => submit(false, true)}
+            className="rounded bg-yellow-500 px-4 py-2 font-bold text-white disabled:opacity-50"
+          >
+            非表示の分も含めて登録する
+          </button>
+        </div>
+      )}
       {warnings && (
         <div className="space-y-2 rounded border border-yellow-400 bg-yellow-50 p-3 text-sm">
           <p className="font-bold">在庫がマイナスになります。登録してよいですか？</p>
@@ -280,7 +361,8 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
           <button
             type="button"
             disabled={pending}
-            onClick={() => submit(true)}
+            // Hidden rows (if any) were already confirmed before the negative-stock check.
+            onClick={() => submit(true, true)}
             className="rounded bg-yellow-500 px-4 py-2 font-bold text-white disabled:opacity-50"
           >
             マイナスでも登録する
@@ -301,7 +383,7 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
       <button
         type="button"
         disabled={pending || transferUnavailable}
-        onClick={() => submit(false)}
+        onClick={() => submit(false, false)}
         className="w-full rounded bg-blue-600 py-3 font-bold text-white disabled:opacity-50"
       >
         登録する
