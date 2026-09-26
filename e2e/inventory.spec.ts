@@ -33,8 +33,10 @@ test('receive, transfer, check stock and void', async ({ page }) => {
   await page.getByRole('button', { name: '登録する' }).click();
   await expect(page.getByText('1件登録しました')).toBeVisible();
 
-  // Check stock
+  // Check stock (the stock page opens on the all-locations table)
   await page.getByRole('link', { name: '在庫', exact: true }).click();
+  await expect(page.getByLabel('表示する拠点')).toHaveValue('all');
+  await page.getByLabel('表示する拠点').selectOption({ label: '事務所' });
   await expect(page.getByText('1ケース＋19本（計43本）')).toBeVisible();
   await page.getByLabel('表示する拠点').selectOption({ label: 'Kingyo' });
   await expect(page.getByText('5本', { exact: true })).toBeVisible();
@@ -51,6 +53,7 @@ test('receive, transfer, check stock and void', async ({ page }) => {
   await expect(page.getByText(/取り消し済み/)).toBeVisible();
 
   await page.getByRole('link', { name: '在庫', exact: true }).click();
+  await page.getByLabel('表示する拠点').selectOption({ label: '事務所' });
   await expect(page.getByText('2ケース（計48本）')).toBeVisible();
 });
 

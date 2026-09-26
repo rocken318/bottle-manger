@@ -6,10 +6,8 @@ import { getStockLevels } from '@/lib/repo/stock';
 import { StockView } from './StockView';
 
 export default async function StockPage() {
-  const staff = await requireStaff();
+  await requireStaff();
   const db = getDb();
   const [locations, drinks, levels] = await Promise.all([listLocations(db), listDrinks(db), getStockLevels(db)]);
-  const defaultLocationId =
-    locations.find((l) => l.id === staff.homeLocationId)?.id ?? locations[0]?.id ?? 'all';
-  return <StockView locations={locations} drinks={drinks} levels={levels} defaultLocationId={defaultLocationId} />;
+  return <StockView locations={locations} drinks={drinks} levels={levels} />;
 }

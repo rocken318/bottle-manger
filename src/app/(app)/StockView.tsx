@@ -6,10 +6,11 @@ import { formatQuantity } from '@/lib/quantity';
 import { matchesSearch } from '@/lib/search';
 import type { Drink, Location, StockLevel } from '@/lib/types';
 
-type Props = { locations: Location[]; drinks: Drink[]; levels: StockLevel[]; defaultLocationId: string };
+type Props = { locations: Location[]; drinks: Drink[]; levels: StockLevel[] };
 
-export function StockView({ locations, drinks, levels, defaultLocationId }: Props) {
-  const [locationId, setLocationId] = useState(defaultLocationId);
+export function StockView({ locations, drinks, levels }: Props) {
+  // Default to the all-locations table so every store's current stock is visible at a glance.
+  const [locationId, setLocationId] = useState('all');
   const [query, setQuery] = useState('');
 
   const quantities = useMemo(() => {
@@ -30,12 +31,12 @@ export function StockView({ locations, drinks, levels, defaultLocationId }: Prop
             onChange={(e) => setLocationId(e.target.value)}
             className="w-full rounded border bg-white px-3 py-2"
           >
+            <option value="all">全拠点</option>
             {locations.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.name}
               </option>
             ))}
-            <option value="all">全拠点</option>
           </select>
         </label>
         <label className="flex-1">
