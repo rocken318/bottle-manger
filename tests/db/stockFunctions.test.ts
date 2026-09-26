@@ -91,6 +91,22 @@ describe('apply_movements', () => {
     ).rejects.toThrow('inactive_location');
   });
 
+  it('returns rows in input order regardless of created_at ties', async () => {
+    const drinkB = await insertDrink(db, 'サイダー', 24);
+    const drinkC = await insertDrink(db, 'ジンジャエール', 24);
+    await apply(crypto.randomUUID(), [
+      { type: 'receive', drink_id: drinkId, to_location_id: office, quantity: 48 },
+      { type: 'receive', drink_id: drinkB, to_location_id: office, quantity: 24 },
+      { type: 'receive', drink_id: drinkC, to_location_id: office, quantity: 12 },
+    ]);
+    const rows = await apply(crypto.randomUUID(), [
+      { type: 'transfer', drink_id: drinkC, from_location_id: office, to_location_id: kingyo, quantity: 3 },
+      { type: 'transfer', drink_id: drinkId, from_location_id: office, to_location_id: kingyo, quantity: 5 },
+      { type: 'transfer', drink_id: drinkB, from_location_id: office, to_location_id: kingyo, quantity: 7 },
+    ]);
+    expect(rows.map((r) => r.quantity)).toEqual([3, 5, 7]);
+  });
+
   it('stores the note and the staff member', async () => {
     const [row] = await apply(crypto.randomUUID(), [
       { type: 'receive', drink_id: drinkId, to_location_id: office, quantity: 1, note: '酒屋A' },

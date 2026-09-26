@@ -32,6 +32,7 @@ create table drinks (
 create table stock_movements (
   id uuid primary key default gen_random_uuid(),
   batch_id uuid not null,
+  line_no integer not null,
   type text not null check (type in ('receive', 'sale', 'transfer', 'adjust')),
   drink_id uuid not null references drinks (id),
   from_location_id uuid references locations (id),
@@ -55,6 +56,7 @@ create table stock_movements (
   ),
   constraint void_pair check ((voided_at is null) = (voided_by is null))
 );
+create unique index stock_movements_batch_line_key on stock_movements (batch_id, line_no);
 create index stock_movements_batch_idx on stock_movements (batch_id);
 create index stock_movements_created_idx on stock_movements (created_at desc);
 create index stock_movements_drink_idx on stock_movements (drink_id);

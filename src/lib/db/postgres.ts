@@ -25,6 +25,7 @@ export function createPostgresDb(url: string): Db {
     // Supabase's transaction pooler does not support prepared statements.
     prepare: false,
     max: Number(process.env.DB_POOL_MAX ?? 5),
+    idle_timeout: 20,
   });
   return wrap(sql, false);
 }

@@ -21,8 +21,8 @@ describe('migrations', () => {
     const to = await locationIdByName(db, '事務所');
     await expect(
       db.query(
-        `insert into stock_movements (batch_id, type, drink_id, to_location_id, quantity, staff_id)
-         values (gen_random_uuid(), 'sale', $1, $2, 1, $3)`,
+        `insert into stock_movements (batch_id, line_no, type, drink_id, to_location_id, quantity, staff_id)
+         values (gen_random_uuid(), 1, 'sale', $1, $2, 1, $3)`,
         [drinkId, to, staffId],
       ),
     ).rejects.toThrow(/movement_shape/);
@@ -34,13 +34,13 @@ describe('migrations', () => {
     const drinkId = await insertDrink(db);
     const office = await locationIdByName(db, '事務所');
     await db.query(
-      `insert into stock_movements (batch_id, type, drink_id, to_location_id, quantity, staff_id)
-       values (gen_random_uuid(), 'receive', $1, $2, 10, $3)`,
+      `insert into stock_movements (batch_id, line_no, type, drink_id, to_location_id, quantity, staff_id)
+       values (gen_random_uuid(), 1, 'receive', $1, $2, 10, $3)`,
       [drinkId, office, staffId],
     );
     await db.query(
-      `insert into stock_movements (batch_id, type, drink_id, from_location_id, quantity, staff_id, voided_at, voided_by)
-       values (gen_random_uuid(), 'sale', $1, $2, 4, $3, now(), $3)`,
+      `insert into stock_movements (batch_id, line_no, type, drink_id, from_location_id, quantity, staff_id, voided_at, voided_by)
+       values (gen_random_uuid(), 1, 'sale', $1, $2, 4, $3, now(), $3)`,
       [drinkId, office, staffId],
     );
     const rows = await db.query<{ quantity: number }>(

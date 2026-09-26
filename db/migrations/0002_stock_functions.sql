@@ -6,6 +6,8 @@ language plpgsql
 as $$
 declare
   v_item jsonb;
+  v_line bigint;
+  v_row record;
   v_pair record;
   v_type text;
   v_drink uuid;
@@ -15,10 +17,10 @@ declare
   v_counted integer;
   v_current integer;
 begin
-  perform pg_advisory_xact_lock(hashtext('batch:' || p_batch_id::text));
+  perform pg_advisory_xact_lock(hashtextextended('batch:' || p_batch_id::text, 0));
 
   if exists (select 1 from stock_movements where batch_id = p_batch_id) then
-    return query select * from stock_movements where batch_id = p_batch_id order by created_at, id;
+    return query select * from stock_movements where batch_id = p_batch_id order by line_no;
     return;
   end if;
 
@@ -36,10 +38,12 @@ begin
     where s.loc is not null
     order by s.loc, s.drink
   loop
-    perform pg_advisory_xact_lock(hashtext('stock:' || v_pair.loc::text || ':' || v_pair.drink::text));
+    perform pg_advisory_xact_lock(hashtextextended('stock:' || v_pair.loc::text || ':' || v_pair.drink::text, 0));
   end loop;
 
-  for v_item in select value from jsonb_array_elements(p_items) loop
+  for v_row in select value, ordinality from jsonb_array_elements(p_items) with ordinality loop
+    v_item := v_row.value;
+    v_line := v_row.ordinality;
     v_type := v_item ->> 'type';
     v_drink := (v_item ->> 'drink_id')::uuid;
     v_from := (v_item ->> 'from_location_id')::uuid;
@@ -65,14 +69,14 @@ begin
     end if;
 
     insert into stock_movements
-      (batch_id, type, drink_id, from_location_id, to_location_id, quantity, counted_quantity, note, staff_id)
+      (batch_id, line_no, type, drink_id, from_location_id, to_location_id, quantity, counted_quantity, note, staff_id)
     values
-      (p_batch_id, v_type, v_drink, v_from, v_to, v_qty,
+      (p_batch_id, v_line, v_type, v_drink, v_from, v_to, v_qty,
        case when v_type = 'adjust' then v_counted end,
        nullif(v_item ->> 'note', ''), p_staff_id);
   end loop;
 
-  return query select * from stock_movements where batch_id = p_batch_id order by created_at, id;
+  return query select * from stock_movements where batch_id = p_batch_id order by line_no;
 end;
 $$;
 
@@ -94,7 +98,7 @@ begin
     select l.id from (values (v_m.from_location_id), (v_m.to_location_id)) as l(id)
     where l.id is not null order by l.id
   loop
-    perform pg_advisory_xact_lock(hashtext('stock:' || v_loc::text || ':' || v_m.drink_id::text));
+    perform pg_advisory_xact_lock(hashtextextended('stock:' || v_loc::text || ':' || v_m.drink_id::text, 0));
   end loop;
 
   update stock_movements
