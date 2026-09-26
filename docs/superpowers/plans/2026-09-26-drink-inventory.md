@@ -2786,7 +2786,7 @@ export async function listMovements(db: Db, filter: MovementFilter, limit: numbe
        left join locations tl on tl.id = m.to_location_id
        left join staff vs on vs.id = m.voided_by
       ${where.length ? `where ${where.join(' and ')}` : ''}
-      order by m.created_at desc, m.id
+      order by m.created_at desc, m.line_no
       limit $${params.length}`,
     params,
   );
