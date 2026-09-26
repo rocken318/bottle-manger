@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { describeAuditDetails } from '@/lib/auditDetails';
 import { requireAdmin } from '@/lib/auth/current';
 import { formatDateTime } from '@/lib/dates';
 import { getDb } from '@/lib/db/client';
@@ -46,7 +47,7 @@ export default async function AdminPage() {
               <span className="text-xs text-gray-500">{formatDateTime(log.createdAt)}</span>{' '}
               <span className="font-bold">{log.staffName ?? 'システム'}</span>{' '}
               {ACTION_LABELS[log.action] ?? log.action}
-              {typeof log.details.name === 'string' && `：${log.details.name}`}
+              {describeAuditDetails(log) !== null && `：${describeAuditDetails(log)}`}
             </li>
           ))}
         </ul>
