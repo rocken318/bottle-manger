@@ -20,8 +20,9 @@ export async function signSession(staffId: string): Promise<string> {
 
 /** Returns the staff id, or null when the token is invalid or expired. */
 export async function verifySession(token: string): Promise<string | null> {
+  const key = secretKey();
   try {
-    const { payload } = await jwtVerify(token, secretKey(), { algorithms: ['HS256'] });
+    const { payload } = await jwtVerify(token, key, { algorithms: ['HS256'] });
     return payload.sub ?? null;
   } catch {
     return null;

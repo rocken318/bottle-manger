@@ -1,16 +1,16 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
 import { requireStaff } from '@/lib/auth/current';
 import { getDb } from '@/lib/db/client';
 import { toUserMessage } from '@/lib/errors';
 import { canVoid } from '@/lib/permissions';
 import { getMovementForVoid, voidMovement } from '@/lib/repo/movements';
+import { idSchema } from '@/lib/validation';
 
 export async function voidMovementAction(movementId: string): Promise<{ error?: string }> {
   const staff = await requireStaff();
-  const parsed = z.string().uuid().safeParse(movementId);
+  const parsed = idSchema.safeParse(movementId);
   if (!parsed.success) return { error: '記録が見つかりません' };
   const db = getDb();
   try {

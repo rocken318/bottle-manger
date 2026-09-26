@@ -21,4 +21,13 @@ describe('session', () => {
   it('rejects garbage', async () => {
     expect(await verifySession('not-a-jwt')).toBeNull();
   });
+  it('throws (not returns null) when SESSION_SECRET is misconfigured', async () => {
+    const original = process.env.SESSION_SECRET;
+    delete process.env.SESSION_SECRET;
+    try {
+      await expect(verifySession('anything')).rejects.toThrow('SESSION_SECRET must be at least 32 characters');
+    } finally {
+      process.env.SESSION_SECRET = original;
+    }
+  });
 });

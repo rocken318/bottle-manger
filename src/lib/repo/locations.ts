@@ -36,6 +36,19 @@ export async function updateLocation(
   input: { id: string; name: string; sortOrder: number; isActive: boolean },
 ): Promise<void> {
   await db.transaction(async (tx) => {
+    if (!input.isActive) {
+      const [current] = await tx.query<{ isActive: boolean }>(
+        'select is_active as "isActive" from locations where id = $1',
+        [input.id],
+      );
+      if (current?.isActive) {
+        const [{ total }] = await tx.query<{ total: string | number }>(
+          'select coalesce(sum(abs(quantity)),0) as total from stock_levels where location_id = $1',
+          [input.id],
+        );
+        if (Number(total) > 0) throw new Error('location_has_stock');
+      }
+    }
     const rows = await tx.query(
       'update locations set name = $2, sort_order = $3, is_active = $4 where id = $1 returning id',
       [input.id, input.name, input.sortOrder, input.isActive],

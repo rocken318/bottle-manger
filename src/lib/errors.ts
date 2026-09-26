@@ -9,6 +9,8 @@ const MESSAGES: Record<string, string> = {
   invalid_pin_format: 'PINは4〜6桁の数字にしてください',
   drink_not_found: 'ドリンクが見つかりません',
   location_not_found: '拠点が見つかりません',
+  location_has_stock: '在庫が残っているため無効にできません。移動または棚卸で0本にしてから無効にしてください',
+  drink_has_stock: '在庫が残っているため廃止できません。棚卸などで全拠点を0本にしてから廃止してください',
 };
 
 export function toUserMessage(error: unknown): string {

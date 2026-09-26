@@ -26,7 +26,10 @@ export async function submitEntry(payload: unknown): Promise<EntryResult> {
 
   try {
     // A retry of a batch that was already stored must not ask for confirmation again.
-    if (await batchExists(db, batchId)) return { status: 'ok', count: 0, alreadySaved: true };
+    if (await batchExists(db, batchId)) {
+      revalidatePath('/', 'layout');
+      return { status: 'ok', count: 0, alreadySaved: true };
+    }
 
     if (!confirmNegative) {
       const negatives = findNegativeResults(await getStockLevels(db), items);

@@ -32,6 +32,19 @@ export async function createDrink(
 
 export async function setDrinkActive(db: Db, actorId: string, id: string, isActive: boolean): Promise<void> {
   await db.transaction(async (tx) => {
+    if (!isActive) {
+      const [current] = await tx.query<{ isActive: boolean }>(
+        'select is_active as "isActive" from drinks where id = $1',
+        [id],
+      );
+      if (current?.isActive) {
+        const [{ total }] = await tx.query<{ total: string | number }>(
+          'select coalesce(sum(abs(quantity)),0) as total from stock_levels where drink_id = $1',
+          [id],
+        );
+        if (Number(total) > 0) throw new Error('drink_has_stock');
+      }
+    }
     const rows = await tx.query<{ name: string }>(
       'update drinks set is_active = $2 where id = $1 and is_active <> $2 returning name',
       [id, isActive],

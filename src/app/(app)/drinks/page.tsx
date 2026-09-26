@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { requireStaff } from '@/lib/auth/current';
 import { getDb } from '@/lib/db/client';
 import { listDrinks } from '@/lib/repo/drinks';
-import { setDrinkActiveAction } from './actions';
+import { DrinkActiveToggle } from './DrinkActiveToggle';
 import { DrinkCreateForm } from './DrinkCreateForm';
 
 export default async function DrinksPage({
@@ -31,13 +31,7 @@ export default async function DrinksPage({
               {d.name}
               <span className="ml-2 text-xs text-gray-500">1ケース{d.unitsPerCase}本</span>
             </span>
-            {isAdmin && (
-              <form action={setDrinkActiveAction}>
-                <input type="hidden" name="id" value={d.id} />
-                <input type="hidden" name="isActive" value={String(!d.isActive)} />
-                <button className="text-sm text-blue-700 underline">{d.isActive ? '廃止' : '復活'}</button>
-              </form>
-            )}
+            {isAdmin && <DrinkActiveToggle id={d.id} isActive={d.isActive} />}
           </li>
         ))}
       </ul>

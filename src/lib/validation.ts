@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { MovementInput } from './types';
 
-const uuid = z.string().uuid('不正な ID です');
+const uuid = z.uuid('不正な ID です');
 const quantity = z
   .number()
   .int('本数は整数で入力してください')

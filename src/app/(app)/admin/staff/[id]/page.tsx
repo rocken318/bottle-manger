@@ -4,14 +4,13 @@ import { requireAdmin } from '@/lib/auth/current';
 import { getDb } from '@/lib/db/client';
 import { listLocations } from '@/lib/repo/locations';
 import { getStaffById } from '@/lib/repo/staff';
+import { idSchema } from '@/lib/validation';
 import { StaffEditForms } from './StaffEditForms';
-
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function StaffEditPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
   const { id } = await params;
-  if (!UUID_PATTERN.test(id)) notFound();
+  if (!idSchema.safeParse(id).success) notFound();
   const db = getDb();
   const [staff, allLocations] = await Promise.all([
     getStaffById(db, id),

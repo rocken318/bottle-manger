@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '@/lib/db/types';
 import { createDrink, listDrinks, setDrinkActive } from '@/lib/repo/drinks';
 import { listAuditLogs } from '@/lib/repo/audit';
-import { createTestDb, insertStaff } from '../helpers/testDb';
+import { applyMovements } from '@/lib/repo/stock';
+import { createTestDb, insertStaff, locationIdByName } from '../helpers/testDb';
 
 let db: Db;
 let staffId: string;
@@ -48,5 +49,51 @@ describe('drinks repository', () => {
 
   it('throws drink_not_found for a missing drink', async () => {
     await expect(setDrinkActive(db, staffId, crypto.randomUUID(), false)).rejects.toThrow('drink_not_found');
+  });
+
+  it('refuses to retire a drink that still has stock at any location', async () => {
+    const d = await createDrink(db, staffId, { name: 'コーラ', unitsPerCase: 24 });
+    const locationId = await locationIdByName(db, '事務所');
+    await applyMovements(db, crypto.randomUUID(), staffId, [
+      {
+        type: 'receive',
+        drinkId: d.id,
+        fromLocationId: null,
+        toLocationId: locationId,
+        quantity: 3,
+        countedQuantity: null,
+        note: null,
+      },
+    ]);
+    await expect(setDrinkActive(db, staffId, d.id, false)).rejects.toThrow('drink_has_stock');
+  });
+
+  it('allows retiring a drink once all locations are zeroed out', async () => {
+    const d = await createDrink(db, staffId, { name: 'コーラ', unitsPerCase: 24 });
+    const locationId = await locationIdByName(db, '事務所');
+    await applyMovements(db, crypto.randomUUID(), staffId, [
+      {
+        type: 'receive',
+        drinkId: d.id,
+        fromLocationId: null,
+        toLocationId: locationId,
+        quantity: 3,
+        countedQuantity: null,
+        note: null,
+      },
+    ]);
+    await applyMovements(db, crypto.randomUUID(), staffId, [
+      {
+        type: 'adjust',
+        drinkId: d.id,
+        fromLocationId: null,
+        toLocationId: locationId,
+        quantity: 0,
+        countedQuantity: 0,
+        note: null,
+      },
+    ]);
+    await expect(setDrinkActive(db, staffId, d.id, false)).resolves.toBeUndefined();
+    expect((await listDrinks(db)).map((x) => x.name)).not.toContain('コーラ');
   });
 });

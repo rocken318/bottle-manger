@@ -24,3 +24,4 @@ npm run test:e2e  # Playwright（PGlite を DB サーバーとして起動）
 - DB: Supabase（Transaction pooler の接続文字列を `DATABASE_URL` に設定）
 - ホスティング: Vercel（環境変数 `DATABASE_URL`, `SESSION_SECRET`）
 - スキーマ変更: `db/migrations/` に連番の SQL を追加し、`npm run db:migrate`
+- テーブルを追加するときは 0004_lockdown.sql と同様に RLS を有効にすること

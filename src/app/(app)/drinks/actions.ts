@@ -7,7 +7,7 @@ import { getDb } from '@/lib/db/client';
 import { toUserMessage } from '@/lib/errors';
 import type { FormState } from '@/lib/formState';
 import { createDrink, setDrinkActive } from '@/lib/repo/drinks';
-import { drinkCreateSchema } from '@/lib/validation';
+import { drinkCreateSchema, idSchema } from '@/lib/validation';
 
 export async function createDrinkAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const staff = await requireStaff();
@@ -26,22 +26,22 @@ export async function createDrinkAction(_prev: FormState, formData: FormData): P
 }
 
 const setDrinkActiveSchema = z.object({
-  id: z.string().uuid(),
+  id: idSchema,
   isActive: z.enum(['true', 'false']),
 });
 
-export async function setDrinkActiveAction(formData: FormData): Promise<void> {
+export async function setDrinkActiveAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const admin = await requireAdmin();
   const parsed = setDrinkActiveSchema.safeParse({
     id: formData.get('id'),
     isActive: formData.get('isActive'),
   });
-  if (!parsed.success) return;
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
   try {
     await setDrinkActive(getDb(), admin.id, parsed.data.id, parsed.data.isActive === 'true');
   } catch (e) {
-    console.error(e);
-    return;
+    return { error: toUserMessage(e) };
   }
   revalidatePath('/', 'layout');
+  return { message: parsed.data.isActive === 'true' ? '復活しました' : '廃止しました' };
 }
