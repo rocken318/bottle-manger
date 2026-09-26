@@ -67,7 +67,15 @@ export default async function HistoryPage({
         </select>
         <input type="date" name="from" defaultValue={filter.fromDate ?? ''} aria-label="開始日" className="rounded border px-2 py-2" />
         <input type="date" name="to" defaultValue={filter.toDate ?? ''} aria-label="終了日" className="rounded border px-2 py-2" />
-        <button className="col-span-2 rounded bg-blue-600 py-2 font-bold text-white sm:col-span-3">絞り込む</button>
+        {filter.fromDate && filter.toDate && filter.fromDate > filter.toDate && (
+          <p className="col-span-2 text-xs text-red-600 sm:col-span-3">開始日が終了日より後になっています</p>
+        )}
+        <div className="col-span-2 flex items-center gap-3 sm:col-span-3">
+          <button className="flex-1 rounded bg-blue-600 py-2 font-bold text-white">絞り込む</button>
+          <a href="/history" className="text-sm text-blue-700 underline">
+            条件をクリア
+          </a>
+        </div>
       </form>
 
       <div className="flex justify-between text-sm">

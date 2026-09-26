@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { MOVEMENT_TYPE_LABELS } from '@/lib/movementLabels';
 import { formatQuantity, toBottles } from '@/lib/quantity';
 import type { Drink, Location, MovementType, StockLevel } from '@/lib/types';
@@ -31,6 +31,22 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId }: Prop
   const stockOf = (loc: string, drink: string) =>
     levels.find((l) => l.locationId === loc && l.drinkId === drink)?.quantity ?? 0;
 
+  const transferUnavailable = type === 'transfer' && locations.length < 2;
+
+  // If the locations list changes (e.g. after a revalidate deactivates the one currently
+  // selected), fall back to a location that still exists instead of holding a stale id.
+  useEffect(() => {
+    if (locationId && !locations.some((l) => l.id === locationId)) {
+      setLocationId(locations[0]?.id ?? '');
+    }
+  }, [locations, locationId]);
+  useEffect(() => {
+    const stillValid = destinationId !== '' && locations.some((l) => l.id === destinationId);
+    if (!stillValid) {
+      setDestinationId(locations.find((l) => l.id !== locationId)?.id ?? '');
+    }
+  }, [locations, destinationId, locationId]);
+
   const resetFeedback = () => {
     setWarnings(null);
     setMessage(null);
@@ -39,15 +55,23 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId }: Prop
     resetFeedback();
     setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   };
+  const removeLine = (key: string) => {
+    resetFeedback();
+    setLines((prev) => prev.filter((l) => l.key !== key));
+  };
 
   function buildItems(): { items: unknown[] } | { error: string } {
     const filled = lines.filter((l) => l.drinkId);
     if (filled.length === 0) return { error: 'ドリンクを選んでください' };
+    if (type === 'transfer' && transferUnavailable) return { error: '移動先の拠点がありません' };
     if (type === 'transfer' && locationId === destinationId) return { error: '移動元と移動先が同じです' };
     const items: unknown[] = [];
     for (const line of filled) {
       const drink = drinkById.get(line.drinkId);
       if (!drink) return { error: 'ドリンクを選び直してください' };
+      if (type === 'adjust' && line.cases.trim() === '' && line.bottles.trim() === '') {
+        return { error: `${drink.name}の数（0なら0）を入力してください` };
+      }
       const cases = toInt(line.cases);
       const bottles = toInt(line.bottles);
       if (!Number.isInteger(cases) || !Number.isInteger(bottles) || cases < 0 || bottles < 0) {
@@ -84,6 +108,16 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId }: Prop
         setWarnings(null);
         if (res.status === 'error') {
           setMessage({ kind: 'error', text: res.message });
+          return;
+        }
+        if (res.alreadySaved) {
+          // Same batch was already stored (e.g. a retried submit). Rotate the batch id so a
+          // fresh submit of edited lines isn't silently dropped, but keep the lines as-is.
+          setMessage({
+            kind: 'ok',
+            text: '前回の送信はすでに登録されていました。内容を変えた場合は、もう一度「登録する」を押してください',
+          });
+          setBatchId(crypto.randomUUID());
           return;
         }
         setMessage({ kind: 'ok', text: `${res.count}件登録しました` });
@@ -124,8 +158,13 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId }: Prop
             value={locationId}
             onChange={(e) => {
               resetFeedback();
-              setLocationId(e.target.value);
+              const next = e.target.value;
+              setLocationId(next);
+              if (next === destinationId) {
+                setDestinationId(locations.find((l) => l.id !== next)?.id ?? '');
+              }
             }}
+            aria-label={locationLabel}
             className="w-full rounded border bg-white px-3 py-2"
           >
             {locations.map((l) => (
@@ -135,7 +174,7 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId }: Prop
             ))}
           </select>
         </label>
-        {type === 'transfer' && (
+        {type === 'transfer' && !transferUnavailable && (
           <label className="flex-1">
             <span className="mb-1 block text-sm">移動先</span>
             <select
@@ -144,6 +183,7 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId }: Prop
                 resetFeedback();
                 setDestinationId(e.target.value);
               }}
+              aria-label="移動先"
               className="w-full rounded border bg-white px-3 py-2"
             >
               {locations.map((l) => (
@@ -156,80 +196,82 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId }: Prop
         )}
       </div>
 
-      {type === 'adjust' && <p className="text-sm text-gray-600">実際に数えた数を入力してください。</p>}
+      {transferUnavailable ? (
+        <p className="rounded border border-yellow-400 bg-yellow-50 p-3 text-sm">移動先の拠点がありません</p>
+      ) : (
+        <>
+          {type === 'adjust' && <p className="text-sm text-gray-600">実際に数えた数を入力してください。</p>}
 
-      <ul className="space-y-3">
-        {lines.map((line, i) => {
-          const drink = drinkById.get(line.drinkId);
-          const book = drink ? stockOf(locationId, drink.id) : 0;
-          const counted = drink ? toBottles(toInt(line.cases), toInt(line.bottles), drink.unitsPerCase) : 0;
-          return (
-            <li key={line.key} className="space-y-2 rounded border bg-white p-3">
-              <DrinkPicker
-                drinks={drinks}
-                value={line.drinkId}
-                onChange={(id) => updateLine(line.key, { drinkId: id })}
-                label={`ドリンク${i + 1}`}
-              />
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  value={line.cases}
-                  onChange={(e) => updateLine(line.key, { cases: e.target.value })}
-                  aria-label={`ケース${i + 1}`}
-                  className="w-20 rounded border px-2 py-2 text-right"
-                />
-                <span>ケース</span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  value={line.bottles}
-                  onChange={(e) => updateLine(line.key, { bottles: e.target.value })}
-                  aria-label={`本${i + 1}`}
-                  className="w-20 rounded border px-2 py-2 text-right"
-                />
-                <span>本</span>
-                {lines.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => setLines((prev) => prev.filter((l) => l.key !== line.key))}
-                    className="ml-auto text-sm text-red-600"
-                  >
-                    削除
-                  </button>
-                )}
-              </div>
-              {drink && (
-                <p className="text-xs text-gray-600">
-                  現在の帳簿: {formatQuantity(book, drink.unitsPerCase)}
-                  {type === 'adjust' && ` → 差 ${counted - book >= 0 ? '+' : '−'}${Math.abs(counted - book)}本`}
-                </p>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+          <ul className="space-y-3">
+            {lines.map((line, i) => {
+              const drink = drinkById.get(line.drinkId);
+              const book = drink ? stockOf(locationId, drink.id) : 0;
+              const counted = drink ? toBottles(toInt(line.cases), toInt(line.bottles), drink.unitsPerCase) : 0;
+              return (
+                <li key={line.key} className="space-y-2 rounded border bg-white p-3">
+                  <DrinkPicker
+                    drinks={drinks}
+                    value={line.drinkId}
+                    onChange={(id) => updateLine(line.key, { drinkId: id })}
+                    label={`ドリンク${i + 1}`}
+                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      value={line.cases}
+                      onChange={(e) => updateLine(line.key, { cases: e.target.value })}
+                      aria-label={`ケース${i + 1}`}
+                      className="w-20 rounded border px-2 py-2 text-right"
+                    />
+                    <span>ケース</span>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      value={line.bottles}
+                      onChange={(e) => updateLine(line.key, { bottles: e.target.value })}
+                      aria-label={`本${i + 1}`}
+                      className="w-20 rounded border px-2 py-2 text-right"
+                    />
+                    <span>本</span>
+                    {lines.length > 1 && (
+                      <button type="button" onClick={() => removeLine(line.key)} className="ml-auto text-sm text-red-600">
+                        削除
+                      </button>
+                    )}
+                  </div>
+                  {drink && (
+                    <p className="text-xs text-gray-600">
+                      現在の帳簿: {formatQuantity(book, drink.unitsPerCase)}
+                      {type === 'adjust' && ` → 差 ${counted - book >= 0 ? '+' : '−'}${Math.abs(counted - book)}本`}
+                    </p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
 
-      <button
-        type="button"
-        onClick={() => setLines((prev) => [...prev, newLine()])}
-        className="w-full rounded border border-dashed py-2 text-sm text-gray-600"
-      >
-        ＋ ドリンクを追加
-      </button>
+          <button
+            type="button"
+            onClick={() => setLines((prev) => [...prev, newLine()])}
+            className="w-full rounded border border-dashed py-2 text-sm text-gray-600"
+          >
+            ＋ ドリンクを追加
+          </button>
 
-      <label className="block">
-        <span className="mb-1 block text-sm">メモ（任意）</span>
-        <input
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          maxLength={200}
-          className="w-full rounded border px-3 py-2"
-        />
-      </label>
+          <label className="block">
+            <span className="mb-1 block text-sm">メモ（任意）</span>
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              maxLength={200}
+              className="w-full rounded border px-3 py-2"
+            />
+          </label>
+        </>
+      )}
 
       {warnings && (
         <div className="space-y-2 rounded border border-yellow-400 bg-yellow-50 p-3 text-sm">
@@ -255,7 +297,7 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId }: Prop
 
       <button
         type="button"
-        disabled={pending}
+        disabled={pending || transferUnavailable}
         onClick={() => submit(false)}
         className="w-full rounded bg-blue-600 py-3 font-bold text-white disabled:opacity-50"
       >

@@ -10,7 +10,7 @@ import { applyMovements, batchExists, findNegativeResults, getStockLevels } from
 import { entrySchema, toMovementInput } from '@/lib/validation';
 
 export type EntryResult =
-  | { status: 'ok'; count: number }
+  | { status: 'ok'; count: number; alreadySaved?: boolean }
   | { status: 'confirm'; warnings: string[] }
   | { status: 'error'; message: string };
 
@@ -26,7 +26,7 @@ export async function submitEntry(payload: unknown): Promise<EntryResult> {
 
   try {
     // A retry of a batch that was already stored must not ask for confirmation again.
-    if (await batchExists(db, batchId)) return { status: 'ok', count: items.length };
+    if (await batchExists(db, batchId)) return { status: 'ok', count: 0, alreadySaved: true };
 
     if (!confirmNegative) {
       const negatives = findNegativeResults(await getStockLevels(db), items);

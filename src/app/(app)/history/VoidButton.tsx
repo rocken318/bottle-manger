@@ -22,8 +22,12 @@ export function VoidButton({ movementId }: { movementId: string }) {
         disabled={pending}
         onClick={() =>
           startTransition(async () => {
-            const res = await voidMovementAction(movementId);
-            if (res.error) setError(res.error);
+            try {
+              const res = await voidMovementAction(movementId);
+              if (res.error) setError(res.error);
+            } catch {
+              setError('通信エラーです。もう一度お試しください');
+            }
           })
         }
         className="rounded bg-red-600 px-2 py-1 text-white disabled:opacity-50"
