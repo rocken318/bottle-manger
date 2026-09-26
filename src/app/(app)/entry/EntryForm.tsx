@@ -148,8 +148,25 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
 
   const locationLabel = type === 'transfer' ? '移動元' : '拠点';
 
+  // Rendered inside the sticky action bar so it stays visible without scrolling; only shown
+  // when the drink list itself is shown (matches the original in-flow placement).
+  const counter = !transferUnavailable && (
+    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-xs text-gray-600">
+      <span>
+        入力中 {filled.length}件
+        {hiddenFilled.length > 0 && `（うち ${hiddenFilled.length}件は絞り込みで非表示）`}
+      </span>
+      {hiddenFilled.length > 0 && (
+        <button type="button" onClick={() => changeQuery('')} className="text-blue-700 underline">
+          入力済みを表示
+        </button>
+      )}
+    </div>
+  );
+
   return (
-    <div className="space-y-4">
+    <>
+    <div className="space-y-4 pb-24">
       <div className="grid grid-cols-4 gap-1 rounded bg-gray-200 p-1">
         {TYPES.map((t) => (
           <button
@@ -246,17 +263,6 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
               aria-label="絞り込み"
               className="w-full rounded border bg-white px-3 py-2"
             />
-            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
-              <span>
-                入力中 {filled.length}件
-                {hiddenFilled.length > 0 && `（うち ${hiddenFilled.length}件は絞り込みで非表示）`}
-              </span>
-              {hiddenFilled.length > 0 && (
-                <button type="button" onClick={() => changeQuery('')} className="text-blue-700 underline">
-                  入力済みを表示
-                </button>
-              )}
-            </div>
           </div>
 
           {visible.length === 0 ? (
@@ -379,15 +385,22 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
             {message.text}
           </p>
         ))}
-
-      <button
-        type="button"
-        disabled={pending || transferUnavailable}
-        onClick={() => submit(false, false)}
-        className="w-full rounded bg-blue-600 py-3 font-bold text-white disabled:opacity-50"
-      >
-        登録する
-      </button>
     </div>
+
+    {/* Sticky action bar: stays visible while scrolling, above the fixed bottom nav (45px tall). */}
+    <div className="fixed inset-x-0 bottom-[45px] border-t bg-white">
+      <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-2">
+        {counter}
+        <button
+          type="button"
+          disabled={pending || transferUnavailable}
+          onClick={() => submit(false, false)}
+          className="shrink-0 rounded bg-blue-600 px-6 py-2 font-bold text-white disabled:opacity-50"
+        >
+          登録する
+        </button>
+      </div>
+    </div>
+    </>
   );
 }

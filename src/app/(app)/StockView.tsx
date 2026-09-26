@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { formatQuantity } from '@/lib/quantity';
 import { matchesSearch } from '@/lib/search';
 import type { Drink, Location, StockLevel } from '@/lib/types';
+
+const ONLY_IN_STOCK_KEY = 'stock:onlyInStock';
 
 type Props = { locations: Location[]; drinks: Drink[]; levels: StockLevel[] };
 
@@ -29,6 +31,26 @@ export function StockView({ locations, drinks, levels }: Props) {
   // Default to the all-locations table so every store's current stock is visible at a glance.
   const [locationId, setLocationId] = useState('all');
   const [query, setQuery] = useState('');
+  // Off by default; remembered per device. Read after mount so the server-rendered markup
+  // (always "off") matches the first client render and avoids a hydration mismatch.
+  const [onlyInStock, setOnlyInStock] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(ONLY_IN_STOCK_KEY) === 'true') setOnlyInStock(true);
+    } catch {
+      // Ignore (private browsing, disabled storage, etc.) — just keep the default.
+    }
+  }, []);
+
+  const setOnlyInStockPersisted = (next: boolean) => {
+    setOnlyInStock(next);
+    try {
+      localStorage.setItem(ONLY_IN_STOCK_KEY, String(next));
+    } catch {
+      // Ignore; the choice just won't be remembered on this device.
+    }
+  };
 
   const quantities = useMemo(() => {
     const map = new Map<string, number>();
@@ -36,7 +58,10 @@ export function StockView({ locations, drinks, levels }: Props) {
     return map;
   }, [levels]);
   const qty = (loc: string, drink: string) => quantities.get(`${loc}:${drink}`) ?? 0;
-  const visible = drinks.filter((d) => matchesSearch(d.name, query));
+  // Negative stock always counts as "has stock" — only an exact 0 is hidden.
+  const hasStock = (d: Drink) =>
+    locationId === 'all' ? locations.some((l) => qty(l.id, d.id) !== 0) : qty(locationId, d.id) !== 0;
+  const visible = drinks.filter((d) => matchesSearch(d.name, query) && (!onlyInStock || hasStock(d)));
   // The drink name opens the entry page for that drink (and the selected location, if any).
   const entryHref = (drinkId: string) =>
     locationId === 'all' ? `/entry?drink=${drinkId}` : `/entry?drink=${drinkId}&location=${locationId}`;
@@ -70,6 +95,15 @@ export function StockView({ locations, drinks, levels }: Props) {
           />
         </label>
       </div>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={onlyInStock}
+          onChange={(e) => setOnlyInStockPersisted(e.target.checked)}
+        />
+        在庫があるものだけ表示
+      </label>
 
       {visible.length === 0 ? (
         <p className="text-gray-500">該当するドリンクがありません</p>

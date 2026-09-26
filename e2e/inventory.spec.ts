@@ -176,3 +176,36 @@ test('bulk entry: several drinks, hidden rows, tab switch and a zero stocktake',
   await expect(page.getByRole('listitem').filter({ hasText: 'お茶' })).toContainText('0本');
   await expect(page.getByRole('listitem').filter({ hasText: 'コーラ500' })).toContainText('3ケース（計72本）');
 });
+
+test('stock page: only-in-stock filter hides zero-stock drinks', async ({ page }) => {
+  // From the previous test: お茶 was counted to exactly 0 (everywhere); コーラ500 has 72
+  // bottles at 事務所 and 0 everywhere else.
+  await login(page, '管理者', '1234');
+  await page.getByRole('link', { name: '在庫', exact: true }).click();
+  await expect(page.getByLabel('表示する拠点')).toHaveValue('all');
+
+  // Off by default: both drinks are visible in the all-locations table.
+  await expect(page.getByLabel('在庫があるものだけ表示')).not.toBeChecked();
+  await expect(page.getByRole('link', { name: 'お茶', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'コーラ500', exact: true })).toBeVisible();
+
+  // Turning it on hides お茶 (0 everywhere) but keeps コーラ500 (has stock at 事務所).
+  await page.getByLabel('在庫があるものだけ表示').check();
+  await expect(page.getByRole('link', { name: 'お茶', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'コーラ500', exact: true })).toBeVisible();
+
+  // Same behaviour in the single-location view.
+  await page.getByLabel('表示する拠点').selectOption({ label: '事務所' });
+  await expect(page.getByRole('link', { name: 'お茶', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'コーラ500', exact: true })).toBeVisible();
+
+  // A location with no stock at all for either drink shows the empty message while filtered.
+  await page.getByLabel('表示する拠点').selectOption({ label: 'Kingyo' });
+  await expect(page.getByText('該当するドリンクがありません')).toBeVisible();
+
+  // Turning it back off restores both drinks.
+  await page.getByLabel('表示する拠点').selectOption({ label: '事務所' });
+  await page.getByLabel('在庫があるものだけ表示').uncheck();
+  await expect(page.getByRole('link', { name: 'お茶', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'コーラ500', exact: true })).toBeVisible();
+});
