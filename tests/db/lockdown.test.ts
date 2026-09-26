@@ -15,7 +15,7 @@ describe('lockdown', () => {
   });
 
   it(
-    'locks anon/authenticated out of every table, the stock_levels view, and both RPC functions',
+    'locks anon/authenticated out of every table (incl. drink_prices/app_settings), the stock_levels view, and both RPC functions',
     async () => {
       const db = wrapPglite(new PGlite());
       await db.exec(`
@@ -30,7 +30,7 @@ describe('lockdown', () => {
       const tables = await db.query<{ table_name: string }>(
         `select table_name from information_schema.tables where table_schema = 'public'`,
       );
-      expect(tables.map((t) => t.table_name)).toEqual(expect.arrayContaining(['stock_movements', 'stock_levels']));
+      expect(tables.map((t) => t.table_name)).toEqual(expect.arrayContaining(['stock_movements', 'stock_levels', 'drink_prices', 'app_settings']));
 
       for (const { table_name } of tables) {
         const [{ anon_ok, authenticated_ok }] = await db.query<{ anon_ok: boolean; authenticated_ok: boolean }>(

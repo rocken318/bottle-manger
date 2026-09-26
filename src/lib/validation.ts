@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { parseMoneyInput } from './costs/money';
+import { isValidYmd } from './dates';
 import type { MovementInput } from './types';
 
 const uuid = z.uuid('不正な ID です');
@@ -111,3 +113,50 @@ export const locationSchema = z.object({
 });
 
 export const locationUpdateSchema = locationSchema.extend({ id: uuid, isActive: z.boolean() });
+
+// --- v1.2 原価・棚卸差異 ---
+
+/** Upper bound for a typed price (per bottle or per case), in yen. */
+export const MAX_PRICE_YEN = 10_000_000;
+
+export const priceCreateSchema = z
+  .object({
+    drinkId: uuid,
+    effectiveFrom: z
+      .string()
+      .refine(isValidYmd, '適用開始日を正しく入力してください')
+      .refine((s) => s >= '2000-01-01' && s <= '2099-12-31', '適用開始日を正しく入力してください'),
+    mode: z.enum(['unit', 'case'], '単価の種類が正しくありません'),
+    amount: z.string(),
+  })
+  .transform((v, ctx) => {
+    const amountCents = parseMoneyInput(v.amount);
+    if (amountCents === null) {
+      ctx.addIssue({ code: 'custom', path: ['amount'], message: '金額は0以上の数字（小数は2桁まで）で入力してください' });
+      return z.NEVER;
+    }
+    if (amountCents > MAX_PRICE_YEN * 100) {
+      ctx.addIssue({ code: 'custom', path: ['amount'], message: '金額が大きすぎます' });
+      return z.NEVER;
+    }
+    return { drinkId: v.drinkId, effectiveFrom: v.effectiveFrom, mode: v.mode, amountCents };
+  });
+export type PriceCreateInput = z.infer<typeof priceCreateSchema>;
+
+/** Non-negative decimal text (maxDecimals: 0 = whole numbers only, otherwise up to 2 decimals). */
+const decimalText = (label: string, maxDecimals: 0 | 2) =>
+  z
+    .string()
+    .trim()
+    .regex(
+      maxDecimals === 0 ? /^\d+$/ : /^\d+(\.\d{1,2})?$/,
+      maxDecimals === 0 ? `${label}は0以上の整数で入力してください` : `${label}は0以上の数字で入力してください`,
+    )
+    .transform(Number);
+
+export const costSettingsSchema = z.object({
+  taxRate: decimalText('税率', 2).pipe(z.number().min(0).max(100, '税率は0〜100%にしてください')),
+  varianceQtyThreshold: decimalText('本数の基準', 0).pipe(z.number().max(1_000_000, '本数の基準が大きすぎます')),
+  varianceAmountThreshold: decimalText('金額の基準', 0).pipe(z.number().max(1_000_000_000, '金額の基準が大きすぎます')),
+});
+export type CostSettingsInput = z.infer<typeof costSettingsSchema>;
