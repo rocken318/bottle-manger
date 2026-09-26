@@ -49,7 +49,7 @@ export const entrySchema = z
     batchId: uuid,
     confirmNegative: z.boolean(),
     note: z.string().trim().max(200, 'メモは200文字以内にしてください').optional(),
-    items: z.array(movementItemSchema).min(1, 'ドリンクを選んでください').max(500, '一度に登録できるのは500件までです'),
+    items: z.array(movementItemSchema).min(1, 'ボトルを選んでください').max(500, '一度に登録できるのは500件までです'),
   })
   .superRefine((value, ctx) => {
     value.items.forEach((item, i) => {

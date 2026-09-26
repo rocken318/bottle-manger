@@ -63,7 +63,7 @@ export function buildEntryItems(input: BuildEntryItemsInput): { items: MovementI
     else if (type === 'sale') items.push({ type, ...base, fromLocationId: locationId, quantity: total });
     else items.push({ type, ...base, fromLocationId: locationId, toLocationId: destinationId, quantity: total });
   }
-  if (items.length === 0) return { error: 'ドリンクの数量を入力してください' };
+  if (items.length === 0) return { error: 'ボトルの数量を入力してください' };
   return { items };
 }
 

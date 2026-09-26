@@ -90,7 +90,7 @@ export function StockView({ locations, drinks, levels }: Props) {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="ドリンク名"
+            placeholder="ボトル名"
             className="w-full rounded border bg-white px-3 py-2"
           />
         </label>
@@ -106,13 +106,13 @@ export function StockView({ locations, drinks, levels }: Props) {
       </label>
 
       {visible.length === 0 ? (
-        <p className="text-gray-500">該当するドリンクがありません</p>
+        <p className="text-gray-500">該当するボトルがありません</p>
       ) : locationId === 'all' ? (
         <div className="overflow-x-auto rounded border bg-white">
           <table className="min-w-full text-sm">
             <thead className="bg-gray-100">
               <tr>
-                <th className="sticky left-0 bg-gray-100 px-3 py-2 text-left">ドリンク</th>
+                <th className="sticky left-0 bg-gray-100 px-3 py-2 text-left">ボトル</th>
                 {locations.map((l) => (
                   <th key={l.id} className="whitespace-nowrap px-3 py-2 text-right">
                     {l.name}

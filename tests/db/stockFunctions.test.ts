@@ -71,7 +71,7 @@ describe('apply_movements', () => {
   });
 
   it('rolls back the whole batch when a drink is inactive', async () => {
-    const retired = await insertDrink(db, '廃止ドリンク', 12);
+    const retired = await insertDrink(db, '廃止ボトル', 12);
     await db.query('update drinks set is_active = false where id = $1', [retired]);
     await expect(
       apply(crypto.randomUUID(), [

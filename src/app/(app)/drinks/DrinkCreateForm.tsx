@@ -18,10 +18,10 @@ export function DrinkCreateForm() {
 
   return (
     <form action={formAction} className="space-y-3 rounded border bg-white p-4">
-      <h2 className="font-bold">ドリンクを登録</h2>
+      <h2 className="font-bold">ボトルを登録</h2>
       <div className="flex flex-wrap gap-3">
         <label className="flex-1">
-          <span className="mb-1 block text-sm">ドリンク名</span>
+          <span className="mb-1 block text-sm">ボトル名</span>
           <input
             name="name"
             required

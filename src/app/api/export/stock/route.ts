@@ -30,7 +30,7 @@ export async function GET() {
   const drinkLabel = (d: (typeof drinks)[number]) => (d.isActive ? d.name : `${d.name}（廃止）`);
 
   const csv = toCsv(
-    ['ドリンク', '1ケースの本数', ...visibleLocations.map((l) => `${locationLabel(l)}（本）`), '合計（本）'],
+    ['ボトル', '1ケースの本数', ...visibleLocations.map((l) => `${locationLabel(l)}（本）`), '合計（本）'],
     visibleDrinks.map((d) => {
       const perLocation = visibleLocations.map((l) => qty.get(`${l.id}:${d.id}`) ?? 0);
       return [drinkLabel(d), d.unitsPerCase, ...perLocation, perLocation.reduce((a, b) => a + b, 0)];

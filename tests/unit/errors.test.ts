@@ -9,7 +9,7 @@ describe('toUserMessage', () => {
     expect(toUserMessage(Object.assign(new Error('fk'), { code: '23503' }))).toBe('関連するデータが見つかりません');
   });
   it('maps known domain errors', () => {
-    expect(toUserMessage(new Error('inactive_drink'))).toBe('廃止されたドリンクが含まれています');
+    expect(toUserMessage(new Error('inactive_drink'))).toBe('廃止されたボトルが含まれています');
     expect(toUserMessage(new Error('already_voided'))).toBe('この記録はすでに取り消されています');
     expect(toUserMessage(new Error('wrong_current_pin'))).toBe('現在のPINが違います');
     expect(toUserMessage(new Error('same_pin'))).toBe('新しいPINが現在のPINと同じです');

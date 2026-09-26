@@ -41,8 +41,8 @@ export default async function HistoryPage({
             </option>
           ))}
         </select>
-        <select name="drink" defaultValue={filter.drinkId ?? ''} aria-label="ドリンク" className="rounded border px-2 py-2">
-          <option value="">すべてのドリンク</option>
+        <select name="drink" defaultValue={filter.drinkId ?? ''} aria-label="ボトル" className="rounded border px-2 py-2">
+          <option value="">すべてのボトル</option>
           {drinks.map((d) => (
             <option key={d.id} value={d.id}>
               {d.name}

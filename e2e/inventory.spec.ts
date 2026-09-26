@@ -12,8 +12,8 @@ test('receive, transfer, check stock and void', async ({ page }) => {
   await login(page, '管理者', '1234');
 
   // Register a drink
-  await page.getByRole('link', { name: 'ドリンク', exact: true }).click();
-  await page.getByLabel('ドリンク名').fill('コーラ');
+  await page.getByRole('link', { name: 'ボトル', exact: true }).click();
+  await page.getByLabel('ボトル名').fill('コーラ');
   await page.getByLabel('1ケースの本数').fill('24');
   await page.getByRole('button', { name: '登録', exact: true }).click();
   await expect(page.getByText('コーラ を登録しました')).toBeVisible();
@@ -62,7 +62,7 @@ test('receive, transfer, check stock and void', async ({ page }) => {
   await expect(page.getByLabel('拠点').locator('option:checked')).toHaveText('事務所');
 
   // Anyone can edit a drink: rename コーラ → コーラ500
-  await page.getByRole('link', { name: 'ドリンク', exact: true }).click();
+  await page.getByRole('link', { name: 'ボトル', exact: true }).click();
   await page.getByRole('button', { name: 'コーラを編集' }).click();
   await page.getByLabel('コーラの名前').fill('コーラ500');
   await page.getByRole('button', { name: '保存', exact: true }).click();
@@ -127,8 +127,8 @@ test('staff can change their own PIN', async ({ page }) => {
 test('bulk entry: several drinks, hidden rows, tab switch and a zero stocktake', async ({ page }) => {
   // コーラ500 (renamed in the first test) has 48 bottles at 事務所.
   await login(page, '管理者', '1234');
-  await page.getByRole('link', { name: 'ドリンク', exact: true }).click();
-  await page.getByLabel('ドリンク名').fill('お茶');
+  await page.getByRole('link', { name: 'ボトル', exact: true }).click();
+  await page.getByLabel('ボトル名').fill('お茶');
   await page.getByLabel('1ケースの本数').fill('24');
   await page.getByRole('button', { name: '登録', exact: true }).click();
   await expect(page.getByText('お茶 を登録しました')).toBeVisible();
@@ -201,7 +201,7 @@ test('stock page: only-in-stock filter hides zero-stock drinks', async ({ page }
 
   // A location with no stock at all for either drink shows the empty message while filtered.
   await page.getByLabel('表示する拠点').selectOption({ label: 'Kingyo' });
-  await expect(page.getByText('該当するドリンクがありません')).toBeVisible();
+  await expect(page.getByText('該当するボトルがありません')).toBeVisible();
 
   // Turning it back off restores both drinks.
   await page.getByLabel('表示する拠点').selectOption({ label: '事務所' });

@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const truncated = fetched.length > LIMIT;
   const rows = truncated ? fetched.slice(0, LIMIT) : fetched;
   const csv = toCsv(
-    ['日時', '種類', 'ドリンク', '移動元', '移動先', '本数（棚卸は差分）', '棚卸の実数', 'メモ', '操作した人', '取り消し日時', '取り消した人'],
+    ['日時', '種類', 'ボトル', '移動元', '移動先', '本数（棚卸は差分）', '棚卸の実数', 'メモ', '操作した人', '取り消し日時', '取り消した人'],
     rows.map((m) => [
       formatDateTime(m.createdAt),
       MOVEMENT_TYPE_LABELS[m.type],

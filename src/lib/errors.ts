@@ -1,5 +1,5 @@
 const MESSAGES: Record<string, string> = {
-  inactive_drink: '廃止されたドリンクが含まれています',
+  inactive_drink: '廃止されたボトルが含まれています',
   inactive_location: '無効になった拠点が含まれています',
   already_voided: 'この記録はすでに取り消されています',
   movement_not_found: '記録が見つかりません',
@@ -7,7 +7,7 @@ const MESSAGES: Record<string, string> = {
   cannot_demote_self: '自分自身を無効化したり、スタッフ権限に変更したりはできません',
   last_admin: '管理者が1人もいなくなるため変更できません',
   invalid_pin_format: 'PINは4〜6桁の数字にしてください',
-  drink_not_found: 'ドリンクが見つかりません',
+  drink_not_found: 'ボトルが見つかりません',
   wrong_current_pin: '現在のPINが違います',
   same_pin: '新しいPINが現在のPINと同じです',
   pin_locked: 'PINを5回間違えたため15分間変更できません',

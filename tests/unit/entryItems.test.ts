@@ -103,9 +103,9 @@ describe('buildEntryItems', () => {
         drinks,
         quantities: { [cola.id]: { cases: ' ', bottles: '' } },
       }),
-    ).toEqual({ error: 'ドリンクの数量を入力してください' });
+    ).toEqual({ error: 'ボトルの数量を入力してください' });
     expect(buildEntryItems({ type: 'receive', locationId: loc, destinationId: dest, drinks, quantities: {} })).toEqual({
-      error: 'ドリンクの数量を入力してください',
+      error: 'ボトルの数量を入力してください',
     });
   });
 
@@ -118,7 +118,7 @@ describe('buildEntryItems', () => {
         drinks: [cola],
         quantities: { [beer.id]: { cases: '1', bottles: '' } },
       }),
-    ).toEqual({ error: 'ドリンクの数量を入力してください' });
+    ).toEqual({ error: 'ボトルの数量を入力してください' });
   });
 
   it('rejects a transfer to the same location or without a destination', () => {

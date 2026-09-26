@@ -106,7 +106,7 @@ export function CsvLinks({ filter }: { filter: CostFilter }) {
 export function VoidNote() {
   return (
     <p className="text-xs text-gray-600">
-      日付は日本時間で判定し、取り消した記録は含めません。過去の月の記録を後から取り消すと、その月の数字も変わります。金額は税抜（仕入の消費税・税込を除く）で、ドリンクごとに1円未満を四捨五入しています。
+      日付は日本時間で判定し、取り消した記録は含めません。過去の月の記録を後から取り消すと、その月の数字も変わります。金額は税抜（仕入の消費税・税込を除く）で、ボトルごとに1円未満を四捨五入しています。
     </p>
   );
 }
@@ -115,10 +115,10 @@ export function MissingPriceWarning({ drinks }: { drinks: { id: string; name: st
   if (drinks.length === 0) return null;
   return (
     <div role="alert" className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-      <p className="font-bold">価格未設定のドリンクがあります（{drinks.length}件）</p>
+      <p className="font-bold">価格未設定のボトルがあります（{drinks.length}件）</p>
       <p>{drinks.map((d) => d.name).join('、')}</p>
       <p className="text-xs">
-        これらのドリンクが関わる金額は集計に含めていません（表の「価格未設定」は拠点ごとの件数）。
+        これらのボトルが関わる金額は集計に含めていません（表の「価格未設定」は拠点ごとの件数）。
         <Link href="/admin/costs/prices" className="ml-1 text-blue-700 underline">
           卸価格を登録する
         </Link>

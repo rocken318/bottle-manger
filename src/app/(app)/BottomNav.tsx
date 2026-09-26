@@ -7,7 +7,7 @@ const ITEMS = [
   { href: '/', label: '在庫' },
   { href: '/entry', label: '入力' },
   { href: '/history', label: '履歴' },
-  { href: '/drinks', label: 'ドリンク' },
+  { href: '/drinks', label: 'ボトル' },
 ];
 
 export function BottomNav({ isAdmin }: { isAdmin: boolean }) {
