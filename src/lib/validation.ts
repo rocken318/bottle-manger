@@ -2,7 +2,11 @@ import { z } from 'zod';
 import type { MovementInput } from './types';
 
 const uuid = z.string().uuid('不正な ID です');
-const quantity = z.number().int('本数は整数で入力してください').min(1, '本数は1本以上にしてください');
+const quantity = z
+  .number()
+  .int('本数は整数で入力してください')
+  .min(1, '本数は1本以上にしてください')
+  .max(100000, '本数が大きすぎます');
 const name = z.string().trim().min(1, '名前を入力してください').max(50, '名前は50文字以内にしてください');
 
 export const pinSchema = z.string().regex(/^\d{4,6}$/, 'PINは4〜6桁の数字にしてください');
@@ -16,7 +20,11 @@ export const movementItemSchema = z.discriminatedUnion('type', [
     type: z.literal('adjust'),
     drinkId: uuid,
     toLocationId: uuid,
-    countedQuantity: z.number().int('本数は整数で入力してください').min(0, '本数は0本以上にしてください'),
+    countedQuantity: z
+      .number()
+      .int('本数は整数で入力してください')
+      .min(0, '本数は0本以上にしてください')
+      .max(100000, '本数が大きすぎます'),
   }),
 ]);
 export type MovementItem = z.infer<typeof movementItemSchema>;
@@ -76,5 +84,9 @@ export const drinkCreateSchema = z.object({
 
 export const locationSchema = z.object({
   name,
-  sortOrder: z.coerce.number().int('表示順は整数で入力してください').min(0).max(999),
+  sortOrder: z.coerce
+    .number()
+    .int('表示順は整数で入力してください')
+    .min(0, '表示順は0以上にしてください')
+    .max(999, '表示順は999以下にしてください'),
 });

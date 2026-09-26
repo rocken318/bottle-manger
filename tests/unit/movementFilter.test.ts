@@ -15,6 +15,9 @@ describe('parseMovementFilter', () => {
   it('takes the first value of repeated params', () => {
     expect(parseMovementFilter({ type: ['sale', 'receive'] })).toEqual({ type: 'sale' });
   });
+  it('drops impossible calendar dates', () => {
+    expect(parseMovementFilter({ from: '2026-02-31', to: '2026-99-99' })).toEqual({});
+  });
 });
 
 describe('movementFilterToQuery', () => {

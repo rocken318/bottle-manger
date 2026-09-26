@@ -20,4 +20,7 @@ describe('matchesSearch', () => {
   it('does not match unrelated names', () => {
     expect(matchesSearch('ビール', 'こーら')).toBe(false);
   });
+  it('ignores middle dots when the query omits them', () => {
+    expect(matchesSearch('コカ・コーラ', 'こかこーら')).toBe(true);
+  });
 });

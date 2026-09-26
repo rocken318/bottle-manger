@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { entrySchema, staffCreateSchema, toMovementInput } from '@/lib/validation';
+import { entrySchema, locationSchema, staffCreateSchema, toMovementInput } from '@/lib/validation';
 
 const a = '0b8f5c1e-1f4a-4c1e-9d2a-2b3c4d5e6f70';
 const b = '1b8f5c1e-1f4a-4c1e-9d2a-2b3c4d5e6f71';
@@ -42,6 +42,24 @@ describe('entrySchema', () => {
   it('rejects an empty batch', () => {
     expect(entrySchema.safeParse({ batchId: a, confirmNegative: false, items: [] }).success).toBe(false);
   });
+  it('rejects an absurdly large quantity', () => {
+    const r = entrySchema.safeParse({
+      batchId: a,
+      confirmNegative: false,
+      items: [{ type: 'sale', drinkId: drink, fromLocationId: a, quantity: 100001 }],
+    });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0].message).toBe('本数が大きすぎます');
+  });
+  it('rejects an absurdly large counted quantity', () => {
+    const r = entrySchema.safeParse({
+      batchId: a,
+      confirmNegative: false,
+      items: [{ type: 'adjust', drinkId: drink, toLocationId: a, countedQuantity: 100001 }],
+    });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0].message).toBe('本数が大きすぎます');
+  });
 });
 
 describe('toMovementInput', () => {
@@ -66,5 +84,18 @@ describe('staffCreateSchema', () => {
     expect(staffCreateSchema.safeParse({ name: '花子', pin: '1234', role: 'staff', homeLocationId: null }).success).toBe(
       true,
     );
+  });
+});
+
+describe('locationSchema', () => {
+  it('gives a Japanese message for a negative sortOrder', () => {
+    const r = locationSchema.safeParse({ name: '倉庫', sortOrder: -1 });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0].message).toBe('表示順は0以上にしてください');
+  });
+  it('gives a Japanese message for a sortOrder above 999', () => {
+    const r = locationSchema.safeParse({ name: '倉庫', sortOrder: 1000 });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0].message).toBe('表示順は999以下にしてください');
   });
 });

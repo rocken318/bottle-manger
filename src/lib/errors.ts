@@ -12,7 +12,7 @@ export function toUserMessage(error: unknown): string {
   const code = (error as { code?: unknown } | null)?.code;
   if (code === '23505') return '同じ名前がすでに登録されています';
   const message = error instanceof Error ? error.message : '';
-  if (message in MESSAGES) return MESSAGES[message];
+  if (Object.hasOwn(MESSAGES, message)) return MESSAGES[message];
   console.error(error);
   return 'エラーが発生しました。もう一度お試しください';
 }

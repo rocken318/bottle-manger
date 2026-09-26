@@ -12,7 +12,11 @@ describe('session', () => {
   });
   it('rejects a tampered token', async () => {
     const token = await signSession('staff-1');
-    expect(await verifySession(token.slice(0, -2) + 'xx')).toBeNull();
+    const otherToken = await signSession('staff-2');
+    const [, otherPayload] = otherToken.split('.');
+    const [header, , signature] = token.split('.');
+    const tampered = `${header}.${otherPayload}.${signature}`;
+    expect(await verifySession(tampered)).toBeNull();
   });
   it('rejects garbage', async () => {
     expect(await verifySession('not-a-jwt')).toBeNull();

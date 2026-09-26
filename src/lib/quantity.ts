@@ -3,6 +3,7 @@ export function toBottles(cases: number, bottles: number, unitsPerCase: number):
 }
 
 export function splitCases(total: number, unitsPerCase: number): { cases: number; bottles: number } {
+  // total must be >= 0
   return { cases: Math.floor(total / unitsPerCase), bottles: total % unitsPerCase };
 }
 

@@ -1,4 +1,4 @@
-import { YMD_PATTERN } from './dates';
+import { isValidYmd } from './dates';
 import type { MovementType } from './types';
 
 export interface MovementFilter {
@@ -29,8 +29,8 @@ export function parseMovementFilter(params: Params): MovementFilter {
   if (drink && UUID_PATTERN.test(drink)) f.drinkId = drink;
   if (staff && UUID_PATTERN.test(staff)) f.staffId = staff;
   if (type && (TYPES as string[]).includes(type)) f.type = type as MovementType;
-  if (from && YMD_PATTERN.test(from)) f.fromDate = from;
-  if (to && YMD_PATTERN.test(to)) f.toDate = to;
+  if (from && isValidYmd(from)) f.fromDate = from;
+  if (to && isValidYmd(to)) f.toDate = to;
   return f;
 }
 

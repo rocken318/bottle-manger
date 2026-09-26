@@ -13,4 +13,8 @@ describe('toUserMessage', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     expect(toUserMessage(new Error('boom'))).toBe('エラーが発生しました。もう一度お試しください');
   });
+  it('does not treat inherited Object properties as known error codes', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(toUserMessage(new Error('constructor'))).toBe('エラーが発生しました。もう一度お試しください');
+  });
 });
