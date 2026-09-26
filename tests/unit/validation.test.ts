@@ -42,6 +42,15 @@ describe('entrySchema', () => {
   it('rejects an empty batch', () => {
     expect(entrySchema.safeParse({ batchId: a, confirmNegative: false, items: [] }).success).toBe(false);
   });
+  it('accepts up to 500 items and rejects more', () => {
+    const item = { type: 'sale', drinkId: drink, fromLocationId: a, quantity: 1 };
+    expect(
+      entrySchema.safeParse({ batchId: a, confirmNegative: false, items: Array(500).fill(item) }).success,
+    ).toBe(true);
+    const r = entrySchema.safeParse({ batchId: a, confirmNegative: false, items: Array(501).fill(item) });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0].message).toBe('一度に登録できるのは500件までです');
+  });
   it('rejects an absurdly large quantity', () => {
     const r = entrySchema.safeParse({
       batchId: a,
