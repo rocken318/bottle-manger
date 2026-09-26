@@ -165,8 +165,33 @@ describe('staff repository', () => {
       await expect(changeOwnPin(db, s.id, '5678', '12')).rejects.toThrow('invalid_pin_format');
     });
 
-    it('throws staff_not_found for a missing staff member', async () => {
-      await expect(changeOwnPin(db, crypto.randomUUID(), '1234', '2468')).rejects.toThrow('staff_not_found');
+    it('treats a missing staff member as a wrong PIN', async () => {
+      await expect(changeOwnPin(db, crypto.randomUUID(), '1234', '2468')).rejects.toThrow('wrong_current_pin');
+    });
+
+    it('locks the account on the 5th wrong current PIN', async () => {
+      const s = await createStaff(db, adminId, { name: '花子', pin: '5678', role: 'staff', homeLocationId: null });
+      for (let i = 0; i < 4; i++) {
+        await expect(changeOwnPin(db, s.id, '0000', '2468')).rejects.toThrow('wrong_current_pin');
+      }
+      await expect(changeOwnPin(db, s.id, '0000', '2468')).rejects.toThrow('pin_locked');
+      expect((await getStaffById(db, s.id))?.lockedUntil).not.toBeNull();
+    });
+
+    it('rejects even the correct current PIN while locked', async () => {
+      const s = await createStaff(db, adminId, { name: '花子', pin: '5678', role: 'staff', homeLocationId: null });
+      await lockStaff(db, s.id);
+      await expect(changeOwnPin(db, s.id, '5678', '2468')).rejects.toThrow('pin_locked');
+      expect(await verifyPin('5678', await pinHashOf(s.id))).toBe(true);
+    });
+
+    it('resets the failed attempt counter on success', async () => {
+      const s = await createStaff(db, adminId, { name: '花子', pin: '5678', role: 'staff', homeLocationId: null });
+      await expect(changeOwnPin(db, s.id, '0000', '2468')).rejects.toThrow('wrong_current_pin');
+      await expect(changeOwnPin(db, s.id, '1111', '2468')).rejects.toThrow('wrong_current_pin');
+      expect((await getStaffById(db, s.id))?.failedPinAttempts).toBe(2);
+      await changeOwnPin(db, s.id, '5678', '2468');
+      expect((await getStaffById(db, s.id))?.failedPinAttempts).toBe(0);
     });
   });
 });

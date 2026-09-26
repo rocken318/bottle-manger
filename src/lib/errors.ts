@@ -10,6 +10,7 @@ const MESSAGES: Record<string, string> = {
   drink_not_found: 'ドリンクが見つかりません',
   wrong_current_pin: '現在のPINが違います',
   same_pin: '新しいPINが現在のPINと同じです',
+  pin_locked: 'PINを5回間違えたため15分間変更できません',
   location_not_found: '拠点が見つかりません',
   location_has_stock: '在庫が残っているため無効にできません。移動または棚卸で0本にしてから無効にしてください',
   drink_has_stock: '在庫が残っているため廃止できません。棚卸などで全拠点を0本にしてから廃止してください',
