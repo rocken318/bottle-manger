@@ -59,6 +59,10 @@ export function toMovementInput(item: MovementItem, note?: string): MovementInpu
 
 export const loginSchema = z.object({ staffId: uuid, pin: pinSchema });
 
+export const changePinSchema = z
+  .object({ currentPin: pinSchema, newPin: pinSchema, confirmPin: z.string() })
+  .refine((v) => v.newPin === v.confirmPin, { message: '新しいPINが一致しません', path: ['confirmPin'] });
+
 export const staffCreateSchema = z.object({
   name,
   pin: pinSchema,

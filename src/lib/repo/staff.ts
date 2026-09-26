@@ -1,5 +1,5 @@
 import type { Db } from '../db/types';
-import { hashPin } from '../auth/pin';
+import { hashPin, verifyPin } from '../auth/pin';
 import { LOCK_DURATION_SECONDS } from '../auth/lockout';
 import type { Role, Staff } from '../types';
 import { writeAudit } from './audit';
@@ -150,6 +150,28 @@ export async function unlockStaff(db: Db, actorId: string, id: string): Promise<
       action: 'staff.unlock',
       targetType: 'staff',
       targetId: id,
+      details: { name: staff.name },
+    });
+  });
+}
+
+/** Lets a logged-in staff member change their own PIN after confirming the current one. */
+export async function changeOwnPin(db: Db, staffId: string, currentPin: string, newPin: string): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [staff] = await tx.query<{ name: string; pinHash: string }>(
+      'select name, pin_hash as "pinHash" from staff where id = $1 for update',
+      [staffId],
+    );
+    if (!staff) throw new Error('staff_not_found');
+    if (!(await verifyPin(currentPin, staff.pinHash))) throw new Error('wrong_current_pin');
+    if (newPin === currentPin) throw new Error('same_pin');
+    const pinHash = await hashPin(newPin);
+    await tx.query('update staff set pin_hash = $2, updated_at = now() where id = $1', [staffId, pinHash]);
+    await writeAudit(tx, {
+      staffId,
+      action: 'staff.change_pin',
+      targetType: 'staff',
+      targetId: staffId,
       details: { name: staff.name },
     });
   });

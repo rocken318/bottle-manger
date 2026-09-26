@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  changePinSchema,
   drinkUpdateSchema,
   entrySchema,
   locationSchema,
@@ -140,5 +141,21 @@ describe('drinkUpdateSchema', () => {
   });
   it('rejects a missing id', () => {
     expect(drinkUpdateSchema.safeParse({ id: 'x', name: 'コーラ', unitsPerCase: 24 }).success).toBe(false);
+  });
+});
+
+describe('changePinSchema', () => {
+  it('accepts matching new PINs', () => {
+    expect(changePinSchema.safeParse({ currentPin: '1234', newPin: '2468', confirmPin: '2468' }).success).toBe(true);
+  });
+  it('rejects a confirmation that does not match', () => {
+    const r = changePinSchema.safeParse({ currentPin: '1234', newPin: '2468', confirmPin: '2469' });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0]).toMatchObject({ message: '新しいPINが一致しません', path: ['confirmPin'] });
+  });
+  it('rejects a badly formatted PIN', () => {
+    const r = changePinSchema.safeParse({ currentPin: '1234', newPin: '12', confirmPin: '12' });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0].message).toBe('PINは4〜6桁の数字にしてください');
   });
 });
