@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { describeAuditDetails } from '@/lib/auditDetails';
 import { requireAdmin } from '@/lib/auth/current';
 import { formatDateTime } from '@/lib/dates';
 import { getDb } from '@/lib/db/client';
@@ -12,6 +13,8 @@ const ACTION_LABELS: Record<string, string> = {
   'drink.create': 'ドリンク登録',
   'drink.deactivate': 'ドリンク廃止',
   'drink.activate': 'ドリンク復活',
+  'drink.update': 'ドリンク編集',
+  'staff.change_pin': '自分のPIN変更',
   'location.create': '拠点追加',
   'location.update': '拠点変更',
   'movement.void': '在庫記録の取り消し',
@@ -44,7 +47,7 @@ export default async function AdminPage() {
               <span className="text-xs text-gray-500">{formatDateTime(log.createdAt)}</span>{' '}
               <span className="font-bold">{log.staffName ?? 'システム'}</span>{' '}
               {ACTION_LABELS[log.action] ?? log.action}
-              {typeof log.details.name === 'string' && `：${log.details.name}`}
+              {describeAuditDetails(log) !== null && `：${describeAuditDetails(log)}`}
             </li>
           ))}
         </ul>

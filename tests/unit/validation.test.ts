@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { entrySchema, locationSchema, locationUpdateSchema, staffCreateSchema, toMovementInput } from '@/lib/validation';
+import {
+  changePinSchema,
+  drinkUpdateSchema,
+  entrySchema,
+  locationSchema,
+  locationUpdateSchema,
+  staffCreateSchema,
+  toMovementInput,
+} from '@/lib/validation';
 
 const a = '0b8f5c1e-1f4a-4c1e-9d2a-2b3c4d5e6f70';
 const b = '1b8f5c1e-1f4a-4c1e-9d2a-2b3c4d5e6f71';
@@ -10,7 +18,7 @@ describe('entrySchema', () => {
     const r = entrySchema.safeParse({
       batchId: a,
       confirmNegative: false,
-      items: [{ type: 'transfer', drinkId: drink, fromLocationId: a, toLocationId: b, quantity: 5 }],
+      items: [{ type: 'transfer', drinkId: drink, unitsPerCase: 24, fromLocationId: a, toLocationId: b, quantity: 5 }],
     });
     expect(r.success).toBe(true);
   });
@@ -18,7 +26,7 @@ describe('entrySchema', () => {
     const r = entrySchema.safeParse({
       batchId: a,
       confirmNegative: false,
-      items: [{ type: 'transfer', drinkId: drink, fromLocationId: a, toLocationId: a, quantity: 5 }],
+      items: [{ type: 'transfer', drinkId: drink, unitsPerCase: 24, fromLocationId: a, toLocationId: a, quantity: 5 }],
     });
     expect(r.success).toBe(false);
     expect(r.error?.issues[0].message).toBe('移動元と移動先が同じです');
@@ -27,7 +35,7 @@ describe('entrySchema', () => {
     const r = entrySchema.safeParse({
       batchId: a,
       confirmNegative: false,
-      items: [{ type: 'sale', drinkId: drink, fromLocationId: a, quantity: 0 }],
+      items: [{ type: 'sale', drinkId: drink, unitsPerCase: 24, fromLocationId: a, quantity: 0 }],
     });
     expect(r.success).toBe(false);
   });
@@ -35,18 +43,37 @@ describe('entrySchema', () => {
     const r = entrySchema.safeParse({
       batchId: a,
       confirmNegative: false,
-      items: [{ type: 'adjust', drinkId: drink, toLocationId: a, countedQuantity: 0 }],
+      items: [{ type: 'adjust', drinkId: drink, unitsPerCase: 24, toLocationId: a, countedQuantity: 0 }],
     });
     expect(r.success).toBe(true);
   });
   it('rejects an empty batch', () => {
     expect(entrySchema.safeParse({ batchId: a, confirmNegative: false, items: [] }).success).toBe(false);
   });
+  it('accepts up to 500 items and rejects more', () => {
+    const item = { type: 'sale', drinkId: drink, unitsPerCase: 24, fromLocationId: a, quantity: 1 };
+    expect(
+      entrySchema.safeParse({ batchId: a, confirmNegative: false, items: Array(500).fill(item) }).success,
+    ).toBe(true);
+    const r = entrySchema.safeParse({ batchId: a, confirmNegative: false, items: Array(501).fill(item) });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0].message).toBe('一度に登録できるのは500件までです');
+  });
+  it('requires a positive integer unitsPerCase on each item', () => {
+    for (const unitsPerCase of [undefined, 0, 1.5]) {
+      const r = entrySchema.safeParse({
+        batchId: a,
+        confirmNegative: false,
+        items: [{ type: 'sale', drinkId: drink, unitsPerCase, fromLocationId: a, quantity: 1 }],
+      });
+      expect(r.success).toBe(false);
+    }
+  });
   it('rejects an absurdly large quantity', () => {
     const r = entrySchema.safeParse({
       batchId: a,
       confirmNegative: false,
-      items: [{ type: 'sale', drinkId: drink, fromLocationId: a, quantity: 100001 }],
+      items: [{ type: 'sale', drinkId: drink, unitsPerCase: 24, fromLocationId: a, quantity: 100001 }],
     });
     expect(r.success).toBe(false);
     expect(r.error?.issues[0].message).toBe('本数が大きすぎます');
@@ -55,7 +82,7 @@ describe('entrySchema', () => {
     const r = entrySchema.safeParse({
       batchId: a,
       confirmNegative: false,
-      items: [{ type: 'adjust', drinkId: drink, toLocationId: a, countedQuantity: 100001 }],
+      items: [{ type: 'adjust', drinkId: drink, unitsPerCase: 24, toLocationId: a, countedQuantity: 100001 }],
     });
     expect(r.success).toBe(false);
     expect(r.error?.issues[0].message).toBe('本数が大きすぎます');
@@ -64,7 +91,7 @@ describe('entrySchema', () => {
 
 describe('toMovementInput', () => {
   it('fills in nulls and the shared note', () => {
-    expect(toMovementInput({ type: 'sale', drinkId: drink, fromLocationId: a, quantity: 2 }, '営業後')).toEqual({
+    expect(toMovementInput({ type: 'sale', drinkId: drink, unitsPerCase: 24, fromLocationId: a, quantity: 2 }, '営業後')).toEqual({
       type: 'sale',
       drinkId: drink,
       fromLocationId: a,
@@ -113,5 +140,32 @@ describe('locationUpdateSchema', () => {
   it('rejects a missing isActive', () => {
     const r = locationUpdateSchema.safeParse({ id: a, name: '倉庫', sortOrder: 1 });
     expect(r.success).toBe(false);
+  });
+});
+
+describe('drinkUpdateSchema', () => {
+  it('accepts an id, a name and units per case', () => {
+    const r = drinkUpdateSchema.safeParse({ id: a, name: ' コーラ500 ', unitsPerCase: '12' });
+    expect(r.success).toBe(true);
+    expect(r.data).toEqual({ id: a, name: 'コーラ500', unitsPerCase: 12 });
+  });
+  it('rejects a missing id', () => {
+    expect(drinkUpdateSchema.safeParse({ id: 'x', name: 'コーラ', unitsPerCase: 24 }).success).toBe(false);
+  });
+});
+
+describe('changePinSchema', () => {
+  it('accepts matching new PINs', () => {
+    expect(changePinSchema.safeParse({ currentPin: '1234', newPin: '2468', confirmPin: '2468' }).success).toBe(true);
+  });
+  it('rejects a confirmation that does not match', () => {
+    const r = changePinSchema.safeParse({ currentPin: '1234', newPin: '2468', confirmPin: '2469' });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0]).toMatchObject({ message: '新しいPINが一致しません', path: ['confirmPin'] });
+  });
+  it('rejects a badly formatted PIN', () => {
+    const r = changePinSchema.safeParse({ currentPin: '1234', newPin: '12', confirmPin: '12' });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0].message).toBe('PINは4〜6桁の数字にしてください');
   });
 });

@@ -8,6 +8,23 @@ import type { Drink, Location, StockLevel } from '@/lib/types';
 
 type Props = { locations: Location[]; drinks: Drink[]; levels: StockLevel[] };
 
+function DrinkLinks({ drink, href }: { drink: Drink; href: string }) {
+  return (
+    <span className="inline-flex items-baseline gap-2">
+      <Link href={href} className="text-blue-700 underline">
+        {drink.name}
+      </Link>
+      <Link
+        href={`/history?drink=${drink.id}`}
+        aria-label={`${drink.name}の履歴`}
+        className="text-xs text-gray-500 underline"
+      >
+        履歴
+      </Link>
+    </span>
+  );
+}
+
 export function StockView({ locations, drinks, levels }: Props) {
   // Default to the all-locations table so every store's current stock is visible at a glance.
   const [locationId, setLocationId] = useState('all');
@@ -20,6 +37,9 @@ export function StockView({ locations, drinks, levels }: Props) {
   }, [levels]);
   const qty = (loc: string, drink: string) => quantities.get(`${loc}:${drink}`) ?? 0;
   const visible = drinks.filter((d) => matchesSearch(d.name, query));
+  // The drink name opens the entry page for that drink (and the selected location, if any).
+  const entryHref = (drinkId: string) =>
+    locationId === 'all' ? `/entry?drink=${drinkId}` : `/entry?drink=${drinkId}&location=${locationId}`;
 
   return (
     <div className="space-y-4">
@@ -73,9 +93,7 @@ export function StockView({ locations, drinks, levels }: Props) {
                 return (
                   <tr key={d.id} className="border-t">
                     <td className="sticky left-0 whitespace-nowrap bg-white px-3 py-2">
-                      <Link href={`/history?drink=${d.id}`} className="text-blue-700 underline">
-                        {d.name}
-                      </Link>
+                      <DrinkLinks drink={d} href={entryHref(d.id)} />
                     </td>
                     {locations.map((l) => {
                       const n = qty(l.id, d.id);
@@ -105,9 +123,7 @@ export function StockView({ locations, drinks, levels }: Props) {
             const n = qty(locationId, d.id);
             return (
               <li key={d.id} className="flex items-center justify-between px-3 py-3">
-                <Link href={`/history?drink=${d.id}`} className="text-blue-700 underline">
-                  {d.name}
-                </Link>
+                <DrinkLinks drink={d} href={entryHref(d.id)} />
                 <span className={n < 0 ? 'font-bold text-red-600' : ''}>{formatQuantity(n, d.unitsPerCase)}</span>
               </li>
             );

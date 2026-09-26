@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '@/lib/db/types';
-import { createDrink, listDrinks, setDrinkActive } from '@/lib/repo/drinks';
+import { createDrink, listDrinks, setDrinkActive, updateDrink } from '@/lib/repo/drinks';
 import { listAuditLogs } from '@/lib/repo/audit';
 import { applyMovements } from '@/lib/repo/stock';
 import { createTestDb, insertStaff, locationIdByName } from '../helpers/testDb';
@@ -95,5 +95,41 @@ describe('drinks repository', () => {
     ]);
     await expect(setDrinkActive(db, staffId, d.id, false)).resolves.toBeUndefined();
     expect((await listDrinks(db)).map((x) => x.name)).not.toContain('コーラ');
+  });
+
+  describe('updateDrink', () => {
+    it('renames a drink, changes units per case and logs before/after', async () => {
+      const d = await createDrink(db, staffId, { name: 'コーラ', unitsPerCase: 24 });
+      await updateDrink(db, staffId, { id: d.id, name: 'コーラ500', unitsPerCase: 12 });
+      const [row] = await listDrinks(db);
+      expect(row).toMatchObject({ id: d.id, name: 'コーラ500', unitsPerCase: 12, isActive: true });
+      const [log] = await listAuditLogs(db, 1);
+      expect(log).toMatchObject({ action: 'drink.update', targetType: 'drink', targetId: d.id });
+      expect(log.details).toEqual({
+        name: 'コーラ500',
+        before: { name: 'コーラ', unitsPerCase: 24 },
+        after: { name: 'コーラ500', unitsPerCase: 12 },
+      });
+    });
+
+    it('does nothing (and writes no audit row) when nothing changed', async () => {
+      const d = await createDrink(db, staffId, { name: 'コーラ', unitsPerCase: 24 });
+      await updateDrink(db, staffId, { id: d.id, name: 'コーラ', unitsPerCase: 24 });
+      expect((await listAuditLogs(db, 100)).filter((l) => l.action === 'drink.update')).toHaveLength(0);
+    });
+
+    it('rejects a name that another drink already uses', async () => {
+      await createDrink(db, staffId, { name: 'コーラ', unitsPerCase: 24 });
+      const beer = await createDrink(db, staffId, { name: 'ビール', unitsPerCase: 24 });
+      await expect(updateDrink(db, staffId, { id: beer.id, name: 'コーラ', unitsPerCase: 24 })).rejects.toMatchObject({
+        code: '23505',
+      });
+    });
+
+    it('throws drink_not_found for a missing drink', async () => {
+      await expect(
+        updateDrink(db, staffId, { id: crypto.randomUUID(), name: 'コーラ', unitsPerCase: 24 }),
+      ).rejects.toThrow('drink_not_found');
+    });
   });
 });

@@ -13,13 +13,25 @@ export const pinSchema = z.string().regex(/^\d{4,6}$/, 'PINは4〜6桁の数字�
 export const roleSchema = z.enum(['admin', 'staff']);
 export const idSchema = uuid;
 
+// The units per case the client used to turn cases into bottles; the server rejects the batch
+// if it no longer matches the drink (it was edited while the entry page was open).
+const unitsPerCase = z.number().int('1ケースの本数が正しくありません').min(1, '1ケースの本数が正しくありません');
+
 export const movementItemSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('receive'), drinkId: uuid, toLocationId: uuid, quantity }),
-  z.object({ type: z.literal('sale'), drinkId: uuid, fromLocationId: uuid, quantity }),
-  z.object({ type: z.literal('transfer'), drinkId: uuid, fromLocationId: uuid, toLocationId: uuid, quantity }),
+  z.object({ type: z.literal('receive'), drinkId: uuid, unitsPerCase, toLocationId: uuid, quantity }),
+  z.object({ type: z.literal('sale'), drinkId: uuid, unitsPerCase, fromLocationId: uuid, quantity }),
+  z.object({
+    type: z.literal('transfer'),
+    drinkId: uuid,
+    unitsPerCase,
+    fromLocationId: uuid,
+    toLocationId: uuid,
+    quantity,
+  }),
   z.object({
     type: z.literal('adjust'),
     drinkId: uuid,
+    unitsPerCase,
     toLocationId: uuid,
     countedQuantity: z
       .number()
@@ -35,7 +47,7 @@ export const entrySchema = z
     batchId: uuid,
     confirmNegative: z.boolean(),
     note: z.string().trim().max(200, 'メモは200文字以内にしてください').optional(),
-    items: z.array(movementItemSchema).min(1, 'ドリンクを選んでください').max(50, '一度に登録できるのは50件までです'),
+    items: z.array(movementItemSchema).min(1, 'ドリンクを選んでください').max(500, '一度に登録できるのは500件までです'),
   })
   .superRefine((value, ctx) => {
     value.items.forEach((item, i) => {
@@ -58,6 +70,10 @@ export function toMovementInput(item: MovementItem, note?: string): MovementInpu
 }
 
 export const loginSchema = z.object({ staffId: uuid, pin: pinSchema });
+
+export const changePinSchema = z
+  .object({ currentPin: pinSchema, newPin: pinSchema, confirmPin: z.string() })
+  .refine((v) => v.newPin === v.confirmPin, { message: '新しいPINが一致しません', path: ['confirmPin'] });
 
 export const staffCreateSchema = z.object({
   name,
@@ -82,6 +98,8 @@ export const drinkCreateSchema = z.object({
     .min(1, '1ケースの本数は1以上にしてください')
     .max(1000, '1ケースの本数が大きすぎます'),
 });
+
+export const drinkUpdateSchema = drinkCreateSchema.extend({ id: idSchema });
 
 export const locationSchema = z.object({
   name,

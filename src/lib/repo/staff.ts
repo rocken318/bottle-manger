@@ -1,4 +1,5 @@
 import type { Db } from '../db/types';
+import { attemptLogin } from '../auth/login';
 import { hashPin } from '../auth/pin';
 import { LOCK_DURATION_SECONDS } from '../auth/lockout';
 import type { Role, Staff } from '../types';
@@ -150,6 +151,34 @@ export async function unlockStaff(db: Db, actorId: string, id: string): Promise<
       action: 'staff.unlock',
       targetType: 'staff',
       targetId: id,
+      details: { name: staff.name },
+    });
+  });
+}
+
+/**
+ * Lets a logged-in staff member change their own PIN after confirming the current one.
+ * Wrong current PINs count toward the same lockout as login (5 misses → locked for 15 minutes).
+ */
+export async function changeOwnPin(db: Db, staffId: string, currentPin: string, newPin: string): Promise<void> {
+  // Counted outside the transaction so failed attempts are not rolled back.
+  const result = await attemptLogin(db, staffId, currentPin);
+  if (!result.ok) throw new Error(result.reason === 'locked' ? 'pin_locked' : 'wrong_current_pin');
+  if (newPin === currentPin) throw new Error('same_pin');
+  const pinHash = await hashPin(newPin);
+  await db.transaction(async (tx) => {
+    const rows = await tx.query<{ name: string }>(
+      `update staff set pin_hash = $2, failed_pin_attempts = 0, updated_at = now()
+        where id = $1 returning name`,
+      [staffId, pinHash],
+    );
+    const staff = rows[0];
+    if (!staff) throw new Error('staff_not_found');
+    await writeAudit(tx, {
+      staffId,
+      action: 'staff.change_pin',
+      targetType: 'staff',
+      targetId: staffId,
       details: { name: staff.name },
     });
   });

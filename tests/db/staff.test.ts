@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '@/lib/db/types';
 import { listAuditLogs } from '@/lib/repo/audit';
 import {
+  changeOwnPin,
   createStaff,
   getStaffById,
   listLoginNames,
@@ -125,5 +126,72 @@ describe('staff repository', () => {
     await expect(listAuditLogs(db, 0)).resolves.not.toThrow();
     await expect(listAuditLogs(db, -1)).resolves.not.toThrow();
     await expect(listAuditLogs(db, 999999)).resolves.not.toThrow();
+  });
+
+  describe('changeOwnPin', () => {
+    const pinHashOf = async (id: string) =>
+      (await db.query<{ pin_hash: string }>('select pin_hash from staff where id = $1', [id]))[0].pin_hash;
+
+    it('changes the PIN when the current PIN is right and logs it', async () => {
+      const s = await createStaff(db, adminId, { name: '花子', pin: '5678', role: 'staff', homeLocationId: null });
+      await changeOwnPin(db, s.id, '5678', '2468');
+      const hash = await pinHashOf(s.id);
+      expect(await verifyPin('2468', hash)).toBe(true);
+      expect(await verifyPin('5678', hash)).toBe(false);
+      const [log] = await listAuditLogs(db, 1);
+      expect(log).toMatchObject({
+        action: 'staff.change_pin',
+        staffName: '花子',
+        targetType: 'staff',
+        targetId: s.id,
+        details: { name: '花子' },
+      });
+    });
+
+    it('rejects a wrong current PIN without changing anything', async () => {
+      const s = await createStaff(db, adminId, { name: '花子', pin: '5678', role: 'staff', homeLocationId: null });
+      await expect(changeOwnPin(db, s.id, '0000', '2468')).rejects.toThrow('wrong_current_pin');
+      expect(await verifyPin('5678', await pinHashOf(s.id))).toBe(true);
+      expect((await listAuditLogs(db, 100)).filter((l) => l.action === 'staff.change_pin')).toHaveLength(0);
+    });
+
+    it('rejects a new PIN that is the same as the current one', async () => {
+      const s = await createStaff(db, adminId, { name: '花子', pin: '5678', role: 'staff', homeLocationId: null });
+      await expect(changeOwnPin(db, s.id, '5678', '5678')).rejects.toThrow('same_pin');
+    });
+
+    it('rejects an invalid new PIN format', async () => {
+      const s = await createStaff(db, adminId, { name: '花子', pin: '5678', role: 'staff', homeLocationId: null });
+      await expect(changeOwnPin(db, s.id, '5678', '12')).rejects.toThrow('invalid_pin_format');
+    });
+
+    it('treats a missing staff member as a wrong PIN', async () => {
+      await expect(changeOwnPin(db, crypto.randomUUID(), '1234', '2468')).rejects.toThrow('wrong_current_pin');
+    });
+
+    it('locks the account on the 5th wrong current PIN', async () => {
+      const s = await createStaff(db, adminId, { name: '花子', pin: '5678', role: 'staff', homeLocationId: null });
+      for (let i = 0; i < 4; i++) {
+        await expect(changeOwnPin(db, s.id, '0000', '2468')).rejects.toThrow('wrong_current_pin');
+      }
+      await expect(changeOwnPin(db, s.id, '0000', '2468')).rejects.toThrow('pin_locked');
+      expect((await getStaffById(db, s.id))?.lockedUntil).not.toBeNull();
+    });
+
+    it('rejects even the correct current PIN while locked', async () => {
+      const s = await createStaff(db, adminId, { name: '花子', pin: '5678', role: 'staff', homeLocationId: null });
+      await lockStaff(db, s.id);
+      await expect(changeOwnPin(db, s.id, '5678', '2468')).rejects.toThrow('pin_locked');
+      expect(await verifyPin('5678', await pinHashOf(s.id))).toBe(true);
+    });
+
+    it('resets the failed attempt counter on success', async () => {
+      const s = await createStaff(db, adminId, { name: '花子', pin: '5678', role: 'staff', homeLocationId: null });
+      await expect(changeOwnPin(db, s.id, '0000', '2468')).rejects.toThrow('wrong_current_pin');
+      await expect(changeOwnPin(db, s.id, '1111', '2468')).rejects.toThrow('wrong_current_pin');
+      expect((await getStaffById(db, s.id))?.failedPinAttempts).toBe(2);
+      await changeOwnPin(db, s.id, '5678', '2468');
+      expect((await getStaffById(db, s.id))?.failedPinAttempts).toBe(0);
+    });
   });
 });
