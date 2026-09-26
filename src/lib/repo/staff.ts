@@ -120,23 +120,37 @@ export async function updateStaff(
 export async function resetPin(db: Db, actorId: string, id: string, pin: string): Promise<void> {
   const pinHash = await hashPin(pin);
   await db.transaction(async (tx) => {
-    const rows = await tx.query(
+    const rows = await tx.query<{ id: string; name: string }>(
       `update staff set pin_hash = $2, failed_pin_attempts = 0, locked_until = null, updated_at = now()
-        where id = $1 returning id`,
+        where id = $1 returning id, name`,
       [id, pinHash],
     );
-    if (rows.length === 0) throw new Error('staff_not_found');
-    await writeAudit(tx, { staffId: actorId, action: 'staff.reset_pin', targetType: 'staff', targetId: id });
+    const staff = rows[0];
+    if (!staff) throw new Error('staff_not_found');
+    await writeAudit(tx, {
+      staffId: actorId,
+      action: 'staff.reset_pin',
+      targetType: 'staff',
+      targetId: id,
+      details: { name: staff.name },
+    });
   });
 }
 
 export async function unlockStaff(db: Db, actorId: string, id: string): Promise<void> {
   await db.transaction(async (tx) => {
-    const rows = await tx.query(
-      'update staff set failed_pin_attempts = 0, locked_until = null where id = $1 returning id',
+    const rows = await tx.query<{ id: string; name: string }>(
+      'update staff set failed_pin_attempts = 0, locked_until = null where id = $1 returning id, name',
       [id],
     );
-    if (rows.length === 0) throw new Error('staff_not_found');
-    await writeAudit(tx, { staffId: actorId, action: 'staff.unlock', targetType: 'staff', targetId: id });
+    const staff = rows[0];
+    if (!staff) throw new Error('staff_not_found');
+    await writeAudit(tx, {
+      staffId: actorId,
+      action: 'staff.unlock',
+      targetType: 'staff',
+      targetId: id,
+      details: { name: staff.name },
+    });
   });
 }

@@ -66,6 +66,8 @@ describe('staff repository', () => {
     expect(after).toMatchObject({ failedPinAttempts: 0, lockedUntil: null });
     const [row] = await db.query<{ pin_hash: string }>('select pin_hash from staff where id = $1', [s.id]);
     expect(await verifyPin('9999', row.pin_hash)).toBe(true);
+    const logs = await listAuditLogs(db, 1);
+    expect(logs[0]).toMatchObject({ action: 'staff.reset_pin', targetId: s.id, details: { name: '花子' } });
   });
 
   it('prevents demoting the last remaining active admin', async () => {
@@ -115,7 +117,8 @@ describe('staff repository', () => {
     await db.query(`update staff set locked_until = now() + interval '1 hour' where id = $1`, [s.id]);
     await unlockStaff(db, adminId, s.id);
     expect((await getStaffById(db, s.id))?.lockedUntil).toBeNull();
-    expect((await listAuditLogs(db, 1))[0].action).toBe('staff.unlock');
+    const logs = await listAuditLogs(db, 1);
+    expect(logs[0]).toMatchObject({ action: 'staff.unlock', targetId: s.id, details: { name: '花子' } });
   });
 
   it('clamps out-of-range audit log limits instead of erroring', async () => {

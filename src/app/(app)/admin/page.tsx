@@ -35,16 +35,20 @@ export default async function AdminPage() {
         在庫一覧をCSV出力
       </a>
       <h2 className="font-bold">操作ログ（新しい100件）</h2>
-      <ul className="divide-y rounded border bg-white text-sm">
-        {logs.map((log) => (
-          <li key={log.id} className="px-3 py-2">
-            <span className="text-xs text-gray-500">{formatDateTime(log.createdAt)}</span>{' '}
-            <span className="font-bold">{log.staffName ?? 'システム'}</span>{' '}
-            {ACTION_LABELS[log.action] ?? log.action}
-            {typeof log.details.name === 'string' && `：${log.details.name}`}
-          </li>
-        ))}
-      </ul>
+      {logs.length === 0 ? (
+        <p className="text-sm text-gray-500">操作ログはまだありません</p>
+      ) : (
+        <ul className="divide-y rounded border bg-white text-sm">
+          {logs.map((log) => (
+            <li key={log.id} className="px-3 py-2">
+              <span className="text-xs text-gray-500">{formatDateTime(log.createdAt)}</span>{' '}
+              <span className="font-bold">{log.staffName ?? 'システム'}</span>{' '}
+              {ACTION_LABELS[log.action] ?? log.action}
+              {typeof log.details.name === 'string' && `：${log.details.name}`}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

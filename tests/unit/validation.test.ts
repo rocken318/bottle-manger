@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { entrySchema, locationSchema, staffCreateSchema, toMovementInput } from '@/lib/validation';
+import { entrySchema, locationSchema, locationUpdateSchema, staffCreateSchema, toMovementInput } from '@/lib/validation';
 
 const a = '0b8f5c1e-1f4a-4c1e-9d2a-2b3c4d5e6f70';
 const b = '1b8f5c1e-1f4a-4c1e-9d2a-2b3c4d5e6f71';
@@ -97,5 +97,21 @@ describe('locationSchema', () => {
     const r = locationSchema.safeParse({ name: '倉庫', sortOrder: 1000 });
     expect(r.success).toBe(false);
     expect(r.error?.issues[0].message).toBe('表示順は999以下にしてください');
+  });
+});
+
+describe('locationUpdateSchema', () => {
+  it('accepts a valid id, name, sortOrder and isActive', () => {
+    const r = locationUpdateSchema.safeParse({ id: a, name: '倉庫', sortOrder: 1, isActive: true });
+    expect(r.success).toBe(true);
+  });
+  it('rejects a non-uuid id', () => {
+    const r = locationUpdateSchema.safeParse({ id: 'not-a-uuid', name: '倉庫', sortOrder: 1, isActive: true });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0].message).toBe('不正な ID です');
+  });
+  it('rejects a missing isActive', () => {
+    const r = locationUpdateSchema.safeParse({ id: a, name: '倉庫', sortOrder: 1 });
+    expect(r.success).toBe(false);
   });
 });

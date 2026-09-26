@@ -14,6 +14,7 @@ const MESSAGES: Record<string, string> = {
 export function toUserMessage(error: unknown): string {
   const code = (error as { code?: unknown } | null)?.code;
   if (code === '23505') return '同じ名前がすでに登録されています';
+  if (code === '23503') return '関連するデータが見つかりません';
   const message = error instanceof Error ? error.message : '';
   if (Object.hasOwn(MESSAGES, message)) return MESSAGES[message];
   console.error(error);

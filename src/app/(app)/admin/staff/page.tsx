@@ -13,6 +13,10 @@ export default async function StaffAdminPage() {
   const now = Date.now();
   return (
     <div className="space-y-4">
+      <Link href="/admin" className="text-sm text-blue-700 underline">
+        ← 管理
+      </Link>
+      <h1 className="text-lg font-bold">スタッフ一覧</h1>
       <StaffCreateForm locations={locations.filter((l) => l.isActive)} />
       <ul className="divide-y rounded border bg-white">
         {staff.map((s) => (

@@ -43,6 +43,7 @@ export function StaffCreateForm({ locations }: { locations: Location[] }) {
             inputMode="numeric"
             pattern="\d{4,6}"
             required
+            autoComplete="off"
             placeholder="4〜6桁"
             value={pin}
             onChange={(e) => setPin(e.target.value)}

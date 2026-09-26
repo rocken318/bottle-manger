@@ -6,7 +6,7 @@ import { getDb } from '@/lib/db/client';
 import { toUserMessage } from '@/lib/errors';
 import type { FormState } from '@/lib/formState';
 import { createStaff, resetPin, unlockStaff, updateStaff } from '@/lib/repo/staff';
-import { pinSchema, staffCreateSchema, staffUpdateSchema } from '@/lib/validation';
+import { idSchema, pinSchema, staffCreateSchema, staffUpdateSchema } from '@/lib/validation';
 
 const optionalId = (v: FormDataEntryValue | null) => (typeof v === 'string' && v !== '' ? v : null);
 
@@ -49,11 +49,12 @@ export async function updateStaffAction(_prev: FormState, formData: FormData): P
 
 export async function resetPinAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const admin = await requireAdmin();
-  const id = String(formData.get('id') ?? '');
+  const id = idSchema.safeParse(formData.get('id'));
+  if (!id.success) return { error: id.error.issues[0].message };
   const pin = pinSchema.safeParse(formData.get('pin'));
   if (!pin.success) return { error: pin.error.issues[0].message };
   try {
-    await resetPin(getDb(), admin.id, id, pin.data);
+    await resetPin(getDb(), admin.id, id.data, pin.data);
   } catch (e) {
     return { error: toUserMessage(e) };
   }
@@ -63,8 +64,10 @@ export async function resetPinAction(_prev: FormState, formData: FormData): Prom
 
 export async function unlockStaffAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const admin = await requireAdmin();
+  const id = idSchema.safeParse(formData.get('id'));
+  if (!id.success) return { error: id.error.issues[0].message };
   try {
-    await unlockStaff(getDb(), admin.id, String(formData.get('id') ?? ''));
+    await unlockStaff(getDb(), admin.id, id.data);
   } catch (e) {
     return { error: toUserMessage(e) };
   }

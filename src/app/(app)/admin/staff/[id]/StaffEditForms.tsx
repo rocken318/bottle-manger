@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { initialFormState, type FormState } from '@/lib/formState';
 import type { Location, Staff } from '@/lib/types';
 import { resetPinAction, unlockStaffAction, updateStaffAction } from '../actions';
@@ -31,6 +31,10 @@ export function StaffEditForms({ staff, locations, isLocked }: { staff: Staff; l
   const [homeLocationId, setHomeLocationId] = useState(staff.homeLocationId ?? '');
   const [isActive, setIsActive] = useState(staff.isActive);
   const [pin, setPin] = useState('');
+
+  useEffect(() => {
+    if (pinState.message) setPin('');
+  }, [pinState]);
 
   return (
     <div className="space-y-4">
@@ -70,7 +74,7 @@ export function StaffEditForms({ staff, locations, isLocked }: { staff: Staff; l
             <option value="">なし</option>
             {locations.map((l) => (
               <option key={l.id} value={l.id}>
-                {l.name}
+                {l.isActive ? l.name : `${l.name}（無効）`}
               </option>
             ))}
           </select>
@@ -99,6 +103,7 @@ export function StaffEditForms({ staff, locations, isLocked }: { staff: Staff; l
             inputMode="numeric"
             pattern="\d{4,6}"
             required
+            autoComplete="off"
             value={pin}
             onChange={(e) => setPin(e.target.value)}
             className="w-full rounded border px-3 py-2"

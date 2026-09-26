@@ -11,6 +11,7 @@ const name = z.string().trim().min(1, '名前を入力してください').max(5
 
 export const pinSchema = z.string().regex(/^\d{4,6}$/, 'PINは4〜6桁の数字にしてください');
 export const roleSchema = z.enum(['admin', 'staff']);
+export const idSchema = uuid;
 
 export const movementItemSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('receive'), drinkId: uuid, toLocationId: uuid, quantity }),
@@ -90,3 +91,5 @@ export const locationSchema = z.object({
     .min(0, '表示順は0以上にしてください')
     .max(999, '表示順は999以下にしてください'),
 });
+
+export const locationUpdateSchema = locationSchema.extend({ id: uuid, isActive: z.boolean() });

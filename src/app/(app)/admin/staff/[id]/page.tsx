@@ -13,8 +13,12 @@ export default async function StaffEditPage({ params }: { params: Promise<{ id: 
   const { id } = await params;
   if (!UUID_PATTERN.test(id)) notFound();
   const db = getDb();
-  const [staff, locations] = await Promise.all([getStaffById(db, id), listLocations(db)]);
+  const [staff, allLocations] = await Promise.all([
+    getStaffById(db, id),
+    listLocations(db, { includeInactive: true }),
+  ]);
   if (!staff) notFound();
+  const locations = allLocations.filter((l) => l.isActive || l.id === staff.homeLocationId);
   const isLocked = staff.lockedUntil !== null && staff.lockedUntil.getTime() > Date.now();
   return (
     <div className="space-y-4">

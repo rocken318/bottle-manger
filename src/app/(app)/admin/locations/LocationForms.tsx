@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { initialFormState } from '@/lib/formState';
 import type { Location } from '@/lib/types';
 import { createLocationAction, updateLocationAction } from './actions';
@@ -9,13 +9,15 @@ export function LocationCreateForm({ nextSortOrder }: { nextSortOrder: number })
   const [state, formAction, pending] = useActionState(createLocationAction, initialFormState);
   const [name, setName] = useState('');
   const [sortOrder, setSortOrder] = useState(String(nextSortOrder));
+  const nextSortOrderRef = useRef(nextSortOrder);
+  nextSortOrderRef.current = nextSortOrder;
 
   useEffect(() => {
     if (state.message) {
       setName('');
-      setSortOrder(String(nextSortOrder));
+      setSortOrder(String(nextSortOrderRef.current));
     }
-  }, [state, nextSortOrder]);
+  }, [state]);
 
   return (
     <form action={formAction} className="space-y-3 rounded border bg-white p-4">
