@@ -19,9 +19,19 @@ export const idSchema = uuid;
 // if it no longer matches the drink (it was edited while the entry page was open).
 const unitsPerCase = z.number().int('1ケースの本数が正しくありません').min(1, '1ケースの本数が正しくありません');
 
+export const disposeReasonSchema = z.enum(['breakage', 'tasting', 'expired', 'other'], '廃棄の理由を選んでください');
+
 export const movementItemSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('receive'), drinkId: uuid, unitsPerCase, toLocationId: uuid, quantity }),
   z.object({ type: z.literal('sale'), drinkId: uuid, unitsPerCase, fromLocationId: uuid, quantity }),
+  z.object({
+    type: z.literal('dispose'),
+    drinkId: uuid,
+    unitsPerCase,
+    fromLocationId: uuid,
+    quantity,
+    reason: disposeReasonSchema,
+  }),
   z.object({
     type: z.literal('transfer'),
     drinkId: uuid,
@@ -67,6 +77,7 @@ export function toMovementInput(item: MovementItem, note?: string): MovementInpu
     toLocationId: 'toLocationId' in item ? item.toLocationId : null,
     quantity: 'quantity' in item ? item.quantity : 0,
     countedQuantity: item.type === 'adjust' ? item.countedQuantity : null,
+    reason: item.type === 'dispose' ? item.reason : null,
     note: note ? note : null,
   };
 }

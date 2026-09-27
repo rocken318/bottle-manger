@@ -89,6 +89,7 @@ export function CsvLinks({ filter }: { filter: CostFilter }) {
     { href: `/api/export/costs/monthly?${q}`, label: '月次集計' },
     { href: `/api/export/costs/purchases?${q}`, label: '仕入明細' },
     { href: `/api/export/costs/variance?${q}`, label: '棚卸差異明細' },
+    { href: `/api/export/costs/dispose?${q}`, label: '廃棄明細' },
     { href: `/api/export/costs/closing-stock?${q}`, label: '月末在庫明細' },
   ];
   return (

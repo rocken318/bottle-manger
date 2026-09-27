@@ -40,6 +40,7 @@ describe('cost CSV rows', () => {
       transferInYen: 0,
       transferOutYen: 0,
       varianceYen: -100,
+      disposeYen: 300,
       closingYen: 1500,
       cogsYen: 1500,
       lossRate: 100 / 1500,
@@ -48,7 +49,7 @@ describe('cost CSV rows', () => {
     };
     const [out] = monthlyCsvRows([row]);
     expect(out).toHaveLength(MONTHLY_HEADER.length);
-    expect(out).toEqual(['2026-09', '全店合計', 1000, 2000, 200, 2200, 0, 0, -100, 1500, 1500, '6.7%', 1]);
+    expect(out).toEqual(['2026-09', '全店合計', 1000, 2000, 200, 2200, 0, 0, -100, 300, 1500, 1500, '6.7%', 1]);
   });
 
   it('purchases compute amount and tax per line, and mark missing prices', () => {

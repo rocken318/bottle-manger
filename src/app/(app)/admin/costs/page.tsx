@@ -18,6 +18,7 @@ const COLUMNS = [
   '移動入',
   '移動出',
   '棚卸差異金額',
+  '廃棄額',
   '月末在庫金額',
   '売上原価',
   'ロス率',
@@ -41,7 +42,7 @@ export default async function CostsMonthlyPage({
       <CostFilterForm action="/admin/costs" filter={filter} locations={locations} notice={notice} />
       <VoidNote />
       <p className="text-xs text-gray-600">
-        売上原価 = 月初在庫金額 ＋ 仕入額 ＋ 移動入 − 移動出 − 月末在庫金額。ロス率 = −棚卸差異金額 ÷ 売上原価（売上原価が0以下なら空欄）。在庫は各時点で有効な卸価格で評価します。消費税率 {settings.taxRate}%。
+        売上原価 = 月初在庫金額 ＋ 仕入額 ＋ 移動入 − 移動出 − 月末在庫金額。廃棄額（破損・廃棄）は売上原価に含まれます。ロス率 = −棚卸差異金額 ÷ 売上原価（原因不明の差異だけ。売上原価が0以下なら空欄）。在庫は各時点で有効な卸価格で評価します。消費税率 {settings.taxRate}%。
       </p>
       <MissingPriceWarning drinks={report.missingDrinks} />
       <CsvLinks filter={filter} />
@@ -74,6 +75,7 @@ export default async function CostsMonthlyPage({
                     r.transferInYen,
                     r.transferOutYen,
                     r.varianceYen,
+                    r.disposeYen,
                     r.closingYen,
                     r.cogsYen,
                   ].map((v, i) => (

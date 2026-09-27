@@ -10,6 +10,7 @@ import { listMovements } from '@/lib/repo/movements';
 import { listStaff } from '@/lib/repo/staff';
 import type { MovementType } from '@/lib/types';
 import { VoidButton } from './VoidButton';
+import { PhotoThumbs } from '../PhotoThumbs';
 
 const PAGE_LIMIT = 200;
 
@@ -99,7 +100,12 @@ export default async function HistoryPage({
             <p className={m.voidedAt ? 'line-through' : ''}>
               <span className="font-bold">{m.drinkName}</span> {describeMovement(m)}
             </p>
-            {m.note && <p className="text-sm text-gray-600">メモ: {m.note}</p>}
+            {m.note && (
+              <p className="text-sm text-gray-600">
+                {m.type === 'dispose' ? '状況' : 'メモ'}: {m.note}
+              </p>
+            )}
+            <PhotoThumbs ids={m.photoIds} />
             {m.voidedAt ? (
               <p className="text-xs">
                 取り消し済み（{formatDateTime(m.voidedAt)}・{m.voidedByName}）

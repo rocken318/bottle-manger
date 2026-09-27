@@ -175,3 +175,22 @@ describe('findUnitsPerCaseMismatches', () => {
     expect(findUnitsPerCaseMismatches([{ drinkId: crypto.randomUUID(), unitsPerCase: 6 }], drinks)).toEqual([]);
   });
 });
+
+describe('buildEntryItems for 破損・廃棄', () => {
+  const input = {
+    type: 'dispose' as const,
+    locationId: loc,
+    destinationId: dest,
+    drinks,
+    quantities: { [cola.id]: { cases: '', bottles: '2' } },
+  };
+  it('requires a reason', () => {
+    expect(buildEntryItems(input)).toEqual({ error: '廃棄の理由を選んでください' });
+    expect(buildEntryItems({ ...input, reason: '' })).toEqual({ error: '廃棄の理由を選んでください' });
+  });
+  it('takes the bottles out of the location with the reason on every row', () => {
+    expect(buildEntryItems({ ...input, reason: 'breakage' })).toEqual({
+      items: [{ type: 'dispose', drinkId: cola.id, unitsPerCase: 24, fromLocationId: loc, quantity: 2, reason: 'breakage' }],
+    });
+  });
+});

@@ -57,6 +57,7 @@ export async function applyMovements(
     to_location_id: i.toLocationId,
     quantity: i.type === 'adjust' ? null : i.quantity,
     counted_quantity: i.countedQuantity,
+    reason: i.reason ?? null,
     note: i.note,
   }));
   // Pass the payload as a plain array/object, not a pre-serialized JSON string: the postgres

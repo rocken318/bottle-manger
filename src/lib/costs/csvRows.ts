@@ -1,7 +1,8 @@
 // Header and rows of the four cost CSVs (spec 11.4). Amounts are plain numbers so that
 // spreadsheets treat them as numbers; unit prices keep their 2 decimals.
 import { formatDateTime } from '../dates';
-import type { MonthlyReportRow, PurchaseDetail, VarianceDetail } from '../repo/costs';
+import { DISPOSE_REASON_LABELS } from '../movementLabels';
+import type { DisposeDetail, MonthlyReportRow, PurchaseDetail, VarianceDetail } from '../repo/costs';
 import { formatCents, lineAmountYen, taxYen } from './money';
 import { formatLossRate, type MonthLine } from './report';
 
@@ -19,6 +20,7 @@ export const MONTHLY_HEADER = [
   '移動入',
   '移動出',
   '棚卸差異金額',
+  '廃棄額',
   '月末在庫金額',
   '売上原価',
   'ロス率',
@@ -36,6 +38,7 @@ export function monthlyCsvRows(rows: MonthlyReportRow[]): Cell[][] {
     r.transferInYen,
     r.transferOutYen,
     r.varianceYen,
+    r.disposeYen,
     r.closingYen,
     r.cogsYen,
     formatLossRate(r.lossRate),
@@ -69,6 +72,23 @@ export function varianceCsvRows(rows: VarianceDetail[]): Cell[][] {
     v.diffQty,
     v.unitCents === null ? MISSING_PRICE : formatCents(v.unitCents),
     v.unitCents === null ? null : lineAmountYen(v.diffQty, v.unitCents),
+  ]);
+}
+
+export const DISPOSE_HEADER = ['日時', '拠点', '入力者', 'ボトル', '本数', '理由', '状況', '単価', '金額', '写真'];
+
+export function disposeCsvRows(rows: DisposeDetail[]): Cell[][] {
+  return rows.map((d) => [
+    formatDateTime(d.createdAt),
+    d.locationName,
+    d.staffName,
+    d.drinkName,
+    d.quantity,
+    DISPOSE_REASON_LABELS[d.reason],
+    d.note,
+    d.unitCents === null ? MISSING_PRICE : formatCents(d.unitCents),
+    d.unitCents === null ? null : lineAmountYen(d.quantity, d.unitCents),
+    d.photoIds.length > 0 ? `${d.photoIds.length}枚` : null,
   ]);
 }
 
