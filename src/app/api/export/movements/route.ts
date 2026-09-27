@@ -3,7 +3,7 @@ import { getCurrentStaff } from '@/lib/auth/current';
 import { toCsv } from '@/lib/csv';
 import { formatDateTime } from '@/lib/dates';
 import { getDb } from '@/lib/db/client';
-import { MOVEMENT_TYPE_LABELS } from '@/lib/movementLabels';
+import { DISPOSE_REASON_LABELS, MOVEMENT_TYPE_LABELS } from '@/lib/movementLabels';
 import { parseMovementFilter } from '@/lib/movementFilter';
 import { listMovements } from '@/lib/repo/movements';
 
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const truncated = fetched.length > LIMIT;
   const rows = truncated ? fetched.slice(0, LIMIT) : fetched;
   const csv = toCsv(
-    ['日時', '種類', 'ボトル', '移動元', '移動先', '本数（棚卸は差分）', '棚卸の実数', 'メモ', '操作した人', '取り消し日時', '取り消した人'],
+    ['日時', '種類', 'ボトル', '移動元', '移動先', '本数（棚卸は差分）', '棚卸の実数', 'メモ', '操作した人', '取り消し日時', '取り消した人', '廃棄の理由', '写真'],
     rows.map((m) => [
       formatDateTime(m.createdAt),
       MOVEMENT_TYPE_LABELS[m.type],
@@ -28,6 +28,8 @@ export async function GET(request: NextRequest) {
       m.staffName,
       m.voidedAt ? formatDateTime(m.voidedAt) : null,
       m.voidedByName,
+      m.reason ? DISPOSE_REASON_LABELS[m.reason] : null,
+      m.photoIds.length > 0 ? `${m.photoIds.length}枚` : null,
     ]),
   );
   return new Response(csv, {

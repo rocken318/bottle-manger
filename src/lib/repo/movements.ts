@@ -24,7 +24,9 @@ export async function listMovements(db: Db, filter: MovementFilter, limit: numbe
             d.units_per_case as "unitsPerCase",
             m.from_location_id as "fromLocationId", fl.name as "fromLocationName",
             m.to_location_id as "toLocationId", tl.name as "toLocationName",
-            m.quantity, m.counted_quantity as "countedQuantity", m.note,
+            m.quantity, m.counted_quantity as "countedQuantity", m.reason, m.note,
+            coalesce((select array_agg(p.id::text order by p.created_at) from movement_photos p
+                       where p.batch_id = m.batch_id), '{}') as "photoIds",
             m.staff_id as "staffId", s.name as "staffName", m.created_at as "createdAt",
             m.voided_at as "voidedAt", vs.name as "voidedByName"
        from stock_movements m

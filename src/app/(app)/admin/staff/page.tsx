@@ -5,6 +5,7 @@ import { getDb } from '@/lib/db/client';
 import { listLocations } from '@/lib/repo/locations';
 import { listStaff } from '@/lib/repo/staff';
 import { StaffCreateForm } from './StaffCreateForm';
+import { PageHelp } from '../../PageHelp';
 
 export default async function StaffAdminPage() {
   const viewer = await requireAdmin();
@@ -18,6 +19,20 @@ export default async function StaffAdminPage() {
         ← 管理
       </Link>
       <h1 className="text-lg font-bold">スタッフ一覧</h1>
+      <PageHelp>
+        <p className="font-bold">登録と一覧</p>
+        <ul>
+          <li>新しい人は名前・PIN（4〜6桁の数字）・権限・所属拠点を入れて「登録」を押します。PINは本人に伝えてください。</li>
+          <li>所属拠点を選んでおくと、その人の「入力」画面で最初からその拠点が選ばれます。</li>
+          <li>一覧の名前を押すと、その人の編集画面が開きます。「ロック中」はPINを5回まちがえた人です。</li>
+        </ul>
+        <p className="font-bold">権限について</p>
+        <ul>
+          <li>スタッフ：在庫の確認・入力・履歴・ボトル登録ができます。</li>
+          <li>管理者：スタッフの管理と、管理画面（拠点・原価など）が使えます。変更できるのは「スタッフ」の人だけです。</li>
+          <li>マスター：管理者・マスターを任命したり外したりでき、管理者のPINも再設定できます。</li>
+        </ul>
+      </PageHelp>
       <StaffCreateForm locations={locations.filter((l) => l.isActive)} viewerRole={viewer.role} />
       <ul className="divide-y rounded border bg-white">
         {staff.map((s) => (

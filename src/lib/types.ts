@@ -1,5 +1,7 @@
 export type Role = 'master' | 'admin' | 'staff';
-export type MovementType = 'receive' | 'sale' | 'transfer' | 'adjust';
+export type MovementType = 'receive' | 'sale' | 'transfer' | 'adjust' | 'dispose';
+/** Why bottles were disposed of (破損・廃棄). */
+export type DisposeReason = 'breakage' | 'tasting' | 'expired' | 'other';
 
 export interface Location {
   id: string;
@@ -40,6 +42,8 @@ export interface MovementInput {
   toLocationId: string | null;
   quantity: number;
   countedQuantity: number | null;
+  /** Only for dispose. */
+  reason?: DisposeReason | null;
   note: string | null;
 }
 
@@ -56,7 +60,10 @@ export interface Movement {
   toLocationName: string | null;
   quantity: number;
   countedQuantity: number | null;
+  reason: DisposeReason | null;
   note: string | null;
+  /** Photos attached to the movement's batch. */
+  photoIds: string[];
   staffId: string;
   staffName: string;
   createdAt: Date;

@@ -48,7 +48,7 @@ test('receive, transfer, check stock and void', async ({ page }) => {
   await page.getByRole('link', { name: '履歴', exact: true }).click();
   await page.getByRole('button', { name: '取り消し' }).first().click();
   await page.getByRole('button', { name: '本当に取り消す' }).click();
-  await expect(page.getByText(/取り消し済み/)).toBeVisible();
+  await expect(page.getByText(/^取り消し済み（/)).toBeVisible();
 
   await page.getByRole('link', { name: '在庫', exact: true }).click();
   await page.getByLabel('表示する拠点').selectOption({ label: '事務所' });
@@ -253,7 +253,7 @@ test('costs: prices, monthly report, variance, settings and CSV', async ({ page 
   // CSV follows the same numbers
   const csv = await page.request.get(await page.getByRole('link', { name: '月次集計', exact: true }).last().getAttribute('href') ?? '');
   expect(csv.ok()).toBe(true);
-  expect(await csv.text()).toContain('事務所,0,11250,1125,12375,0,0,-4050,7200,4050,100.0%,0');
+  expect(await csv.text()).toContain('事務所,0,11250,1125,12375,0,0,-4050,0,7200,4050,100.0%,0');
 
   // Settings: tax rate 8%
   await page.getByRole('link', { name: '設定', exact: true }).click();
@@ -267,7 +267,7 @@ test('costs: prices, monthly report, variance, settings and CSV', async ({ page 
   await page.getByRole('link', { name: '卸価格', exact: true }).click();
   page.once('dialog', (d) => d.accept());
   await page.getByRole('button', { name: /お茶 .* の卸価格 を削除/ }).click();
-  await expect(page.getByText('価格未設定')).toBeVisible();
+  await expect(page.getByText('価格未設定', { exact: true })).toBeVisible();
 
   // Everything is in the audit log
   await page.getByRole('link', { name: '← 管理' }).click();
@@ -314,4 +314,45 @@ test('master role: only the master manages admins', async ({ page }) => {
   await page.getByLabel('新しいPIN').fill('2468');
   await page.getByRole('button', { name: 'PINを変更' }).click();
   await expect(page.getByText('PINを変更し、ロックを解除しました')).toBeVisible();
+});
+
+test('破損・廃棄: reason, situation and a photo, shown in history and costs', async ({ page }) => {
+  // コーラ500 (100円/本 since the costs test) has 72 bottles at 事務所.
+  await login(page, '管理者', '1234');
+  await page.getByRole('link', { name: '入力', exact: true }).click();
+  await page.getByRole('button', { name: '破損・廃棄', exact: true }).click();
+  await page.getByLabel('コーラ500の本').fill('2');
+  await page.getByRole('button', { name: '登録する' }).click();
+  await expect(page.getByText('廃棄の理由を選んでください')).toBeVisible();
+
+  await page.getByLabel('理由（必須）').selectOption({ label: '破損' });
+  await page.getByLabel('状況（何があったか）').fill('棚から落として割れた');
+  // A 1x1 PNG stands in for a phone photo (it is re-encoded to JPEG in the browser).
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64',
+  );
+  await page.locator('input[type="file"]').setInputFiles({ name: 'broken.png', mimeType: 'image/png', buffer: png });
+  await expect(page.getByAltText('写真1')).toBeVisible();
+  await page.getByRole('button', { name: '登録する' }).click();
+  await expect(page.getByText('破損・廃棄 1件登録しました')).toBeVisible();
+
+  await page.getByRole('link', { name: '履歴', exact: true }).click();
+  const item = page.getByRole('listitem').filter({ hasText: '廃棄 2本（破損）' });
+  await expect(item).toContainText('状況: 棚から落として割れた');
+  await expect(item.getByAltText('写真1')).toBeVisible();
+  const src = await item.getByAltText('写真1').getAttribute('src');
+  const photo = await page.request.get(src ?? '');
+  expect(photo.headers()['content-type']).toBe('image/jpeg');
+
+  await page.getByRole('link', { name: '管理', exact: true }).click();
+  await page.getByRole('link', { name: '原価・棚卸差異' }).click();
+  const office = page.getByRole('row').filter({ has: page.getByRole('rowheader', { name: '事務所' }) });
+  // 廃棄額 2本 × 100円 lowers the closing stock (70本 × 100円). お茶 has no price since the costs test.
+  // Data cells: 0 年月, 1 月初, 2 仕入, 3 税, 4 税込, 5 移動入, 6 移動出, 7 差異, 8 廃棄額, 9 月末.
+  await expect(office.getByRole('cell').nth(8)).toHaveText('200');
+  await expect(office.getByRole('cell').nth(9)).toHaveText('7,000');
+  await page.getByRole('link', { name: '棚卸差異', exact: true }).click();
+  await expect(page.getByRole('row').filter({ hasText: '破損' })).toContainText('200');
+  await expect(page.getByText('棚から落として割れた')).toBeVisible();
 });

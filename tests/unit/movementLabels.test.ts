@@ -22,3 +22,19 @@ describe('describeMovement', () => {
     ).toBe('暖家で棚卸 実数9本（差 +2本）');
   });
 });
+
+describe('describeMovement for 破損・廃棄', () => {
+  it('shows the location, quantity and reason', () => {
+    expect(
+      describeMovement({
+        type: 'dispose',
+        fromLocationName: 'Kingyo',
+        toLocationName: null,
+        quantity: 2,
+        countedQuantity: null,
+        unitsPerCase: 24,
+        reason: 'breakage',
+      }),
+    ).toBe('Kingyoで廃棄 2本（破損）');
+  });
+});

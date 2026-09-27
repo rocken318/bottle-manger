@@ -4,9 +4,13 @@ import { parseCostFilter } from '@/lib/costs/period';
 import { formatLossRate, isVarianceFlagged, rankVarianceByDrink } from '@/lib/costs/report';
 import { formatDateTime } from '@/lib/dates';
 import { getDb } from '@/lib/db/client';
-import { listVarianceDetails, loadMonthlyReport } from '@/lib/repo/costs';
+import { listDisposeDetails, listVarianceDetails, loadMonthlyReport } from '@/lib/repo/costs';
+import { DISPOSE_REASON_LABELS } from '@/lib/movementLabels';
+import type { DisposeReason } from '@/lib/types';
+import { PhotoThumbs } from '../../../PhotoThumbs';
 import { listLocations } from '@/lib/repo/locations';
 import { getCostSettings } from '@/lib/repo/settings';
+import { PageHelp } from '../../../PageHelp';
 import { CostFilterForm, CostsNav, CsvLinks, MissingPriceWarning, VoidNote } from '../CostsShared';
 
 const signed = (n: number) => (n > 0 ? `+${formatYen(n)}` : formatYen(n));
@@ -25,6 +29,22 @@ export default async function CostsVariancePage({
     getCostSettings(db),
     listVarianceDetails(db, filter),
   ]);
+  const disposals = (await listDisposeDetails(db, filter)).map((d) => ({
+    ...d,
+    amountYen: d.unitCents === null ? null : lineAmountYen(d.quantity, d.unitCents),
+  }));
+  const byReason = (Object.keys(DISPOSE_REASON_LABELS) as DisposeReason[])
+    .map((reason) => {
+      const rs = disposals.filter((d) => d.reason === reason);
+      return {
+        reason,
+        count: rs.length,
+        qty: rs.reduce((a, d) => a + d.quantity, 0),
+        amountYen: rs.reduce((a, d) => a + (d.amountYen ?? 0), 0),
+        missing: rs.filter((d) => d.amountYen === null).length,
+      };
+    })
+    .filter((r) => r.count > 0);
   const report = await loadMonthlyReport(db, filter, settings.taxRate);
   const thresholds = { qty: settings.varianceQtyThreshold, amount: settings.varianceAmountThreshold };
 
@@ -41,6 +61,18 @@ export default async function CostsVariancePage({
   return (
     <div className="space-y-4">
       <CostsNav current="variance" filter={filter} />
+      <PageHelp>
+        <ul>
+          <li>棚卸で「記録上の数（帳簿）」と「実際に数えた数（実数）」がどれだけずれたかを確認する画面です。</li>
+          <li>開始月・終了月・拠点を選んで「表示」を押します。</li>
+          <li>差異がマイナスなら、記録より実物が少ない（ロス）ということです。販売や入荷の入力もれがないか確認しましょう。</li>
+          <li>「店舗 × 月のロス」で、どの拠点のどの月にロスが多いかを見ます。</li>
+          <li>「ボトル別の差異」は、ずれの金額が大きいボトル順に並びます。</li>
+          <li>「棚卸の明細」で、いつ・だれが数えたかがわかります。ずれが大きい行は赤く「要確認」と表示されます（基準は「設定」タブで変えられます）。</li>
+          <li>割れた・試飲で出したなど理由がわかっている分は、「入力」の「破損・廃棄」で登録すると、ここの差異（原因不明のロス）に入りません。</li>
+          <li>いちばん下の「破損・廃棄」で、理由ごとの金額と、1件ずつの状況・写真を確認できます。写真を押すと大きく表示されます。</li>
+        </ul>
+      </PageHelp>
       <CostFilterForm action="/admin/costs/variance" filter={filter} locations={locations} notice={notice} />
       <VoidNote />
       <p className="text-xs text-gray-600">
@@ -174,6 +206,72 @@ export default async function CostsVariancePage({
               </tbody>
             </table>
           </div>
+        )}
+      </section>
+      <section className="space-y-2">
+        <h2 className="font-bold">破損・廃棄</h2>
+        <p className="text-xs text-gray-600">
+          理由が分かっている減りです。売上原価には含みますが、棚卸差異・ロス率には含めません。
+        </p>
+        {disposals.length === 0 ? (
+          <p className="text-sm text-gray-500">この期間の破損・廃棄はありません</p>
+        ) : (
+          <>
+            <div className="overflow-x-auto rounded border bg-white">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 text-xs text-gray-600">
+                  <tr>
+                    <th scope="col" className="px-2 py-2 text-left">理由</th>
+                    <th scope="col" className="px-2 py-2 text-right">金額</th>
+                    <th scope="col" className="px-2 py-2 text-right">本数</th>
+                    <th scope="col" className="px-2 py-2 text-right">件数</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {byReason.map((r) => (
+                    <tr key={r.reason}>
+                      <th scope="row" className="whitespace-nowrap px-2 py-2 text-left font-normal">
+                        {DISPOSE_REASON_LABELS[r.reason]}
+                      </th>
+                      <td className="whitespace-nowrap px-2 py-2 text-right font-bold tabular-nums">
+                        {formatYen(r.amountYen)}
+                        {r.missing > 0 && (
+                          <span className="ml-1 rounded bg-amber-100 px-1 text-xs font-normal text-amber-900">
+                            価格未設定{r.missing}件
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-2 py-2 text-right tabular-nums">{r.qty}</td>
+                      <td className="px-2 py-2 text-right tabular-nums">{r.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <ul className="divide-y rounded border bg-white text-sm">
+              {disposals.map((d) => (
+                <li key={d.id} className="space-y-1 px-3 py-2">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                    <span>
+                      <span className="text-xs text-gray-500">{formatDateTime(d.createdAt)}</span> {d.locationName}・
+                      {d.drinkName} <span className="font-bold">{d.quantity}本</span>
+                      <span className="ml-1 rounded bg-gray-100 px-1 text-xs">{DISPOSE_REASON_LABELS[d.reason]}</span>
+                    </span>
+                    <span className="font-bold tabular-nums">
+                      {d.amountYen === null ? (
+                        <span className="rounded bg-amber-100 px-1 text-xs font-normal text-amber-900">価格未設定</span>
+                      ) : (
+                        `${formatYen(d.amountYen)}円`
+                      )}
+                    </span>
+                  </div>
+                  {d.note && <p className="text-gray-700">{d.note}</p>}
+                  <PhotoThumbs ids={d.photoIds} />
+                  <p className="text-xs text-gray-500">入力：{d.staffName}</p>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </section>
       <p className="text-xs text-gray-500">金額の単位は円です。</p>

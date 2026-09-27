@@ -6,6 +6,7 @@ import { listDrinks } from '@/lib/repo/drinks';
 import { listPriceHistory } from '@/lib/repo/prices';
 import { CostsNav } from '../CostsShared';
 import { PriceCreateForm, PriceDeleteButton } from './PriceForms';
+import { PageHelp } from '../../../PageHelp';
 
 export default async function CostsPricesPage() {
   await requireAdmin();
@@ -21,6 +22,16 @@ export default async function CostsPricesPage() {
   return (
     <div className="space-y-4">
       <CostsNav current="prices" />
+      <PageHelp>
+        <ul>
+          <li>ボトルごとの卸価格（仕入れ値・税抜）を登録します。原価の計算に使います。</li>
+          <li>ボトル・適用開始日・価格を入れて「登録」を押します。1本あたりでも、1ケースあたりでも入力できます。</li>
+          <li>値上げ・値下げのときは、新しい適用開始日で登録します。その日から新しい価格で計算され、前の価格は履歴に残ります。</li>
+          <li>先の日付で登録すると「予定」と表示され、その日から使われます。</li>
+          <li>まちがえたときは、同じボトル・同じ適用開始日で登録し直すと上書きされます。いらない行は「削除」で消せます。</li>
+          <li>「価格未設定」のボトルは金額の集計に入らないので、早めに登録してください。</li>
+        </ul>
+      </PageHelp>
       <PriceCreateForm
         drinks={drinks.filter((d) => d.isActive).map((d) => ({ id: d.id, name: d.name, unitsPerCase: d.unitsPerCase }))}
         today={today}

@@ -8,3 +8,6 @@ next-env.d.ts
 test-results/
 playwright-report/
 .vercel
+
+# Claude Code agent worktrees
+.claude/worktrees/

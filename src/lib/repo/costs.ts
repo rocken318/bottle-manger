@@ -4,6 +4,7 @@ import { buildMonthlyRows, type FlowKind, type MonthLine, type MonthlySummary } 
 import { monthStart, monthsBetween, nextMonth, type CostFilter } from '../costs/period';
 import { jstDayStart } from '../dates';
 import type { Db } from '../db/types';
+import type { DisposeReason } from '../types';
 import { listDrinks } from './drinks';
 import { listLocations } from './locations';
 import { parseCents } from '../costs/money';
@@ -82,7 +83,7 @@ export async function getMonthLines(db: Db, filter: CostFilter): Promise<MonthLi
             coalesce(bool_or(g.unit_cost is null and g.qty <> 0), false) as missing
        from (
          select f.location_id, f.drink_id, mo.month_start, f.kind,
-                case when f.kind = 'transfer_out' then -f.delta else f.delta end as qty,
+                case when f.kind in ('transfer_out', 'dispose') then -f.delta else f.delta end as qty,
                 ${priceOnSql('f.drink_id', 'f.d')} as unit_cost
            from f
            join months mo on f.d >= mo.month_start and f.d < mo.next_start
@@ -240,6 +241,51 @@ export async function listVarianceDetails(db: Db, filter: CostFilter): Promise<V
     bookQty: Number(r.bookQty),
     countedQty: Number(r.countedQty),
     diffQty: Number(r.diffQty),
+    unitCents: toCentsOrNull(unitCost),
+  }));
+}
+
+export interface DisposeDetail {
+  id: string;
+  createdAt: Date;
+  locationId: string;
+  locationName: string;
+  staffName: string;
+  drinkId: string;
+  drinkName: string;
+  quantity: number;
+  reason: DisposeReason;
+  note: string | null;
+  photoIds: string[];
+  unitCents: number | null;
+}
+
+/** Non-voided 破損・廃棄 in the period, newest first, with the price on the JST date. */
+export async function listDisposeDetails(db: Db, filter: CostFilter): Promise<DisposeDetail[]> {
+  const params = periodParams(filter);
+  let where = '';
+  if (filter.locationId) {
+    params.push(filter.locationId);
+    where = `and m.from_location_id = $${params.length}`;
+  }
+  const rows = await db.query<Omit<DisposeDetail, 'unitCents'> & { unitCost: string | null }>(
+    `select m.id, m.created_at as "createdAt", m.from_location_id as "locationId", l.name as "locationName",
+            s.name as "staffName", m.drink_id as "drinkId", d.name as "drinkName", m.quantity, m.reason, m.note,
+            coalesce((select array_agg(p.id::text order by p.created_at) from movement_photos p
+                       where p.batch_id = m.batch_id), '{}') as "photoIds",
+            ${priceOnSql('m.drink_id', "(m.created_at at time zone 'Asia/Tokyo')::date")}::text as "unitCost"
+       from stock_movements m
+       join locations l on l.id = m.from_location_id
+       join drinks d on d.id = m.drink_id
+       join staff s on s.id = m.staff_id
+      where m.type = 'dispose' and m.voided_at is null
+        and m.created_at >= $1::timestamptz and m.created_at < $2::timestamptz ${where}
+      order by m.created_at desc, m.batch_id, m.line_no`,
+    params,
+  );
+  return rows.map(({ unitCost, ...r }) => ({
+    ...r,
+    quantity: Number(r.quantity),
     unitCents: toCentsOrNull(unitCost),
   }));
 }

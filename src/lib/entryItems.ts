@@ -1,5 +1,5 @@
 import { toBottles } from './quantity';
-import type { Drink, MovementType } from './types';
+import type { DisposeReason, Drink, MovementType } from './types';
 import type { MovementItem } from './validation';
 
 /** Raw text typed into the cases / bottles inputs of one drink row. */
@@ -11,6 +11,8 @@ export type BuildEntryItemsInput = {
   locationId: string;
   /** Destination location, only used for transfers. */
   destinationId: string;
+  /** Only used for dispose (applies to every row of the batch). */
+  reason?: DisposeReason | '';
   drinks: Drink[];
   /** Keyed by drink id. */
   quantities: Record<string, EntryQuantity | undefined>;
@@ -42,6 +44,8 @@ export function rowTotal(q: EntryQuantity | undefined, unitsPerCase: number): nu
  */
 export function buildEntryItems(input: BuildEntryItemsInput): { items: MovementItem[] } | { error: string } {
   const { type, locationId, destinationId, drinks, quantities } = input;
+  const reason = input.reason ?? '';
+  if (type === 'dispose' && !reason) return { error: '廃棄の理由を選んでください' };
   if (type === 'transfer') {
     if (!destinationId) return { error: '移動先の拠点がありません' };
     if (locationId === destinationId) return { error: '移動元と移動先が同じです' };
@@ -61,6 +65,9 @@ export function buildEntryItems(input: BuildEntryItemsInput): { items: MovementI
     if (total < 1) return { error: `${drink.name}の数量を入力してください` };
     if (type === 'receive') items.push({ type, ...base, toLocationId: locationId, quantity: total });
     else if (type === 'sale') items.push({ type, ...base, fromLocationId: locationId, quantity: total });
+    else if (type === 'dispose') {
+      items.push({ type, ...base, fromLocationId: locationId, quantity: total, reason: reason as DisposeReason });
+    }
     else items.push({ type, ...base, fromLocationId: locationId, toLocationId: destinationId, quantity: total });
   }
   if (items.length === 0) return { error: 'ボトルの数量を入力してください' };

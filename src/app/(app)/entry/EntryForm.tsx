@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { buildEntryItems, isFilled, rowTotal, type EntryQuantity } from '@/lib/entryItems';
-import { MOVEMENT_TYPE_LABELS } from '@/lib/movementLabels';
+import { DISPOSE_REASON_LABELS, MOVEMENT_TYPE_LABELS } from '@/lib/movementLabels';
 import { formatQuantity } from '@/lib/quantity';
 import { matchesSearch } from '@/lib/search';
-import type { Drink, Location, MovementType, StockLevel } from '@/lib/types';
+import { resizeImage } from '@/lib/resizeImage';
+import type { DisposeReason, Drink, Location, MovementType, StockLevel } from '@/lib/types';
 import { submitEntry } from './actions';
 
 type Props = {
@@ -16,7 +17,9 @@ type Props = {
   initialQuery?: string;
 };
 
-const TYPES: MovementType[] = ['receive', 'sale', 'transfer', 'adjust'];
+const TYPES: MovementType[] = ['receive', 'sale', 'transfer', 'adjust', 'dispose'];
+const MAX_PHOTOS = 3;
+const REASONS = Object.keys(DISPOSE_REASON_LABELS) as DisposeReason[];
 const EMPTY: EntryQuantity = { cases: '', bottles: '' };
 
 export function EntryForm({ drinks, locations, levels, defaultLocationId, initialQuery = '' }: Props) {
@@ -29,6 +32,9 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
   // Keyed by drink id so values typed into rows survive filtering.
   const [quantities, setQuantities] = useState<Record<string, EntryQuantity>>({});
   const [note, setNote] = useState('');
+  // 破損・廃棄 only.
+  const [reason, setReason] = useState<DisposeReason | ''>('');
+  const [photos, setPhotos] = useState<{ file: File; url: string }[]>([]);
   const [batchId, setBatchId] = useState(() => crypto.randomUUID());
   const [warnings, setWarnings] = useState<string[] | null>(null);
   // Names of filled rows hidden by the search filter, shown for confirmation before submitting.
@@ -78,10 +84,44 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
     setWarnings(null);
     setHiddenConfirm(null);
   };
+  const clearPhotos = () => {
+    for (const p of photos) URL.revokeObjectURL(p.url);
+    setPhotos([]);
+  };
+  const addPhotos = (files: FileList | null) => {
+    if (!files) return;
+    const room = MAX_PHOTOS - photos.length;
+    const picked = [...files].filter((f) => f.type.startsWith('image/')).slice(0, room);
+    if (files.length > room) setMessage({ kind: 'error', text: `写真は${MAX_PHOTOS}枚までです` });
+    setPhotos((prev) => [...prev, ...picked.map((file) => ({ file, url: URL.createObjectURL(file) }))]);
+  };
+  const removePhoto = (url: string) => {
+    URL.revokeObjectURL(url);
+    setPhotos((prev) => prev.filter((p) => p.url !== url));
+  };
+
+  /** Uploads the photos of a saved batch. Returns an error message, or null when all went well. */
+  async function uploadPhotos(savedBatchId: string): Promise<string | null> {
+    try {
+      const form = new FormData();
+      for (const p of photos) form.append('photo', await resizeImage(p.file), 'photo.jpg');
+      const res = await fetch(`/api/batches/${savedBatchId}/photos`, { method: 'POST', body: form });
+      if (res.ok) return null;
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      return body?.error ?? '写真を保存できませんでした';
+    } catch {
+      return '写真を保存できませんでした（通信エラー）';
+    }
+  }
+
   const switchType = (next: MovementType) => {
     resetFeedback();
     setPendingType(null);
-    if (next !== type) setQuantities({});
+    if (next !== type) {
+      setQuantities({});
+      setReason('');
+      clearPhotos();
+    }
     setType(next);
   };
   const requestType = (next: MovementType) => {
@@ -102,7 +142,7 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
       setMessage({ kind: 'error', text: '移動先の拠点がありません' });
       return;
     }
-    const built = buildEntryItems({ type, locationId, destinationId, drinks, quantities });
+    const built = buildEntryItems({ type, locationId, destinationId, drinks, quantities, reason });
     if ('error' in built) {
       setMessage({ kind: 'error', text: built.error });
       return;
@@ -136,9 +176,16 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
           setBatchId(crypto.randomUUID());
           return;
         }
-        setMessage({ kind: 'ok', text: `${typeLabel} ${res.count}件登録しました` });
+        const photoError = type === 'dispose' && photos.length > 0 ? await uploadPhotos(batchId) : null;
+        setMessage(
+          photoError
+            ? { kind: 'error', text: `${typeLabel} ${res.count}件登録しましたが、${photoError}` }
+            : { kind: 'ok', text: `${typeLabel} ${res.count}件登録しました` },
+        );
         setQuantities({});
         setNote('');
+        setReason('');
+        clearPhotos();
         setBatchId(crypto.randomUUID());
       } catch {
         setMessage({ kind: 'error', text: '通信エラーです。もう一度「登録する」を押してください（二重に登録はされません）' });
@@ -167,7 +214,7 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
   return (
     <>
     <div className="space-y-4 pb-24">
-      <div className="grid grid-cols-4 gap-1 rounded bg-gray-200 p-1">
+      <div className="grid grid-cols-3 gap-1 rounded bg-gray-200 p-1 sm:grid-cols-5">
         {TYPES.map((t) => (
           <button
             key={t}
@@ -253,6 +300,28 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
           {type === 'adjust' && (
             <p className="text-sm text-gray-600">実際に数えた数を入力してください（入力したボトルだけ登録されます）。</p>
           )}
+          {type === 'dispose' && (
+            <label className="block">
+              <span className="mb-1 block text-sm">理由（必須）</span>
+              <select
+                value={reason}
+                onChange={(e) => {
+                  resetFeedback();
+                  setReason(e.target.value as DisposeReason | '');
+                }}
+                className="w-full rounded border bg-white px-3 py-2"
+              >
+                <option value="" disabled>
+                  選んでください
+                </option>
+                {REASONS.map((r) => (
+                  <option key={r} value={r}>
+                    {DISPOSE_REASON_LABELS[r]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           <div className="space-y-1">
             <input
@@ -326,15 +395,67 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
             </div>
           )}
 
-          <label className="block">
-            <span className="mb-1 block text-sm">メモ（任意）</span>
-            <input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              maxLength={200}
-              className="w-full rounded border px-3 py-2"
-            />
-          </label>
+          {type === 'dispose' ? (
+            <>
+              <label className="block">
+                <span className="mb-1 block text-sm">状況（何があったか）</span>
+                <textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  maxLength={200}
+                  rows={3}
+                  placeholder="例：棚から落として2本割れた"
+                  className="w-full rounded border px-3 py-2"
+                />
+              </label>
+              <div className="space-y-2">
+                <span className="block text-sm">写真（任意・{MAX_PHOTOS}枚まで）</span>
+                {photos.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {photos.map((p, i) => (
+                      <div key={p.url} className="relative">
+                        {/* Local preview of a picked file (object URL). */}
+                        <img src={p.url} alt={`写真${i + 1}`} className="h-20 w-20 rounded border object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(p.url)}
+                          aria-label={`写真${i + 1}を外す`}
+                          className="absolute -right-2 -top-2 h-6 w-6 rounded-full bg-gray-700 text-xs text-white"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {photos.length < MAX_PHOTOS && (
+                  <label className="inline-block cursor-pointer rounded border bg-white px-4 py-2 text-sm">
+                    写真を追加
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => {
+                        addPhotos(e.target.files);
+                        e.target.value = '';
+                      }}
+                      className="sr-only"
+                    />
+                  </label>
+                )}
+              </div>
+            </>
+          ) : (
+            <label className="block">
+              <span className="mb-1 block text-sm">メモ（任意）</span>
+              <input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={200}
+                className="w-full rounded border px-3 py-2"
+              />
+            </label>
+          )}
         </>
       )}
 

@@ -13,7 +13,7 @@ export interface MovementFilter {
 type Params = Record<string, string | string[] | undefined>;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const TYPES: MovementType[] = ['receive', 'sale', 'transfer', 'adjust'];
+const TYPES: MovementType[] = ['receive', 'sale', 'transfer', 'adjust', 'dispose'];
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 

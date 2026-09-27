@@ -42,6 +42,7 @@ describe('lineAmounts', () => {
       transferInYen: 83,
       transferOutYen: 167, // 166.66
       varianceYen: -84, // -83.50
+      disposeYen: 0,
       closingYen: 630,
     });
   });
@@ -104,6 +105,7 @@ describe('summarize', () => {
       transferInYen: 0,
       transferOutYen: 300,
       varianceYen: -220,
+      disposeYen: 0,
       closingYen: 600 + 100,
       cogsYen: 1100 + 2412 + 0 - 300 - 700,
       lossRate: 220 / 2512,
@@ -156,5 +158,29 @@ describe('rankVarianceByDrink', () => {
       { drinkId: 'C', drinkName: 'C', count: 1, diffQty: 8, amountYen: 0, missingCount: 1 },
       { drinkId: 'D', drinkName: 'D', count: 1, diffQty: 0, amountYen: 0, missingCount: 0 },
     ]);
+  });
+});
+
+describe('破損・廃棄 in the monthly summary', () => {
+  it('shows disposals as 廃棄額, inside COGS but outside the loss rate', () => {
+    // 10 bottles at 100円: 2 broken, 1 lost (stocktake −1), 7 left.
+    const l = line({
+      openingQty: 10,
+      openingUnitCents: 10000,
+      closingQty: 7,
+      closingUnitCents: 10000,
+      flows: {
+        dispose: { qty: 2, amountCents: 20000, missing: false },
+        adjust: { qty: -1, amountCents: -10000, missing: false },
+      },
+    });
+    const s = summarize('2026-10', 'L1', [l], 10);
+    expect(s.disposeYen).toBe(200);
+    expect(s.varianceYen).toBe(-100);
+    expect(s.cogsYen).toBe(1000 - 700);
+    expect(s.lossRate).toBeCloseTo(100 / 300);
+  });
+  it('leaves the line out when a disposal has no price', () => {
+    expect(lineAmounts(line({ flows: { dispose: { qty: 1, amountCents: 0, missing: true } } }))).toBeNull();
   });
 });

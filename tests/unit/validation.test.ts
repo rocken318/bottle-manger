@@ -5,6 +5,7 @@ import {
   entrySchema,
   locationSchema,
   locationUpdateSchema,
+  movementItemSchema,
   staffCreateSchema,
   toMovementInput,
 } from '@/lib/validation';
@@ -98,6 +99,7 @@ describe('toMovementInput', () => {
       toLocationId: null,
       quantity: 2,
       countedQuantity: null,
+      reason: null,
       note: '営業後',
     });
   });
@@ -167,5 +169,24 @@ describe('changePinSchema', () => {
     const r = changePinSchema.safeParse({ currentPin: '1234', newPin: '12', confirmPin: '12' });
     expect(r.success).toBe(false);
     expect(r.error?.issues[0].message).toBe('PINは4〜6桁の数字にしてください');
+  });
+});
+
+describe('dispose items', () => {
+  const item = { type: 'dispose', drinkId: drink, unitsPerCase: 24, fromLocationId: a, quantity: 2 } as const;
+  it('require a known reason', () => {
+    expect(movementItemSchema.safeParse(item).success).toBe(false);
+    expect(movementItemSchema.safeParse({ ...item, reason: 'lost' }).success).toBe(false);
+    expect(movementItemSchema.safeParse({ ...item, reason: 'breakage' }).success).toBe(true);
+  });
+  it('carry the reason into the movement input', () => {
+    expect(toMovementInput({ ...item, reason: 'expired' }, '賞味期限切れ')).toMatchObject({
+      type: 'dispose',
+      fromLocationId: a,
+      toLocationId: null,
+      quantity: 2,
+      reason: 'expired',
+      note: '賞味期限切れ',
+    });
   });
 });

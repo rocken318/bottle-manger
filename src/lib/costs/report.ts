@@ -2,10 +2,10 @@
 // MonthLine per (location, month, drink); everything here turns those into yen.
 import { centsToYen, lineAmountYen, taxYen } from './money';
 
-export type FlowKind = 'receive' | 'transfer_in' | 'transfer_out' | 'adjust';
+export type FlowKind = 'receive' | 'transfer_in' | 'transfer_out' | 'adjust' | 'dispose';
 
 export interface Flow {
-  /** Bottles (transfer_out counted positive; adjust is signed). */
+  /** Bottles (transfer_out and dispose counted positive; adjust is signed). */
   qty: number;
   /** Σ bottles × price on each movement's JST date, over the movements that have a price. */
   amountCents: number;
@@ -32,6 +32,8 @@ export interface LineAmounts {
   transferInYen: number;
   transferOutYen: number;
   varianceYen: number;
+  /** 破損・廃棄. Part of COGS (it lowers the closing stock) but not of the loss rate. */
+  disposeYen: number;
   closingYen: number;
 }
 
@@ -71,6 +73,7 @@ export function lineAmounts(line: MonthLine): LineAmounts | null {
     transferInYen: flowYen(line.flows.transfer_in),
     transferOutYen: flowYen(line.flows.transfer_out),
     varianceYen: flowYen(line.flows.adjust),
+    disposeYen: flowYen(line.flows.dispose),
     closingYen: balanceYen(line.closingQty, line.closingUnitCents),
   };
   if (Object.values(values).some((v) => v === null)) return null;
@@ -85,7 +88,15 @@ export function lossRate(varianceYen: number, cogsYen: number): number | null {
 
 /** Adds up the lines of one month (for one location, or all of them when locationId is null). */
 export function summarize(month: string, locationId: string | null, lines: MonthLine[], taxRate: number): MonthlySummary {
-  const sum: LineAmounts = { openingYen: 0, purchaseYen: 0, transferInYen: 0, transferOutYen: 0, varianceYen: 0, closingYen: 0 };
+  const sum: LineAmounts = {
+    openingYen: 0,
+    purchaseYen: 0,
+    transferInYen: 0,
+    transferOutYen: 0,
+    varianceYen: 0,
+    disposeYen: 0,
+    closingYen: 0,
+  };
   let missingCount = 0;
   const missingDrinkIds: string[] = [];
   for (const line of lines) {
