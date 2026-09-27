@@ -3,12 +3,13 @@
 import { useActionState, useState } from 'react';
 import { initialFormState } from '@/lib/formState';
 import { loginAction } from './actions';
+import { submitWithoutReset } from '@/lib/submitWithoutReset';
 
 export function LoginForm({ names }: { names: { id: string; name: string }[] }) {
   const [state, formAction, pending] = useActionState(loginAction, initialFormState);
   const [staffId, setStaffId] = useState('');
   return (
-    <form action={formAction} className="space-y-4 rounded-lg bg-white p-6 shadow">
+    <form onSubmit={submitWithoutReset(formAction)} className="space-y-4 rounded-lg bg-white p-6 shadow">
       <label className="block">
         <span className="mb-1 block text-sm font-medium">名前</span>
         <select

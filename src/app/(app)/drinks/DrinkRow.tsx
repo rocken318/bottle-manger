@@ -5,6 +5,7 @@ import { initialFormState } from '@/lib/formState';
 import type { Drink } from '@/lib/types';
 import { updateDrinkAction } from './actions';
 import { DrinkActiveToggle } from './DrinkActiveToggle';
+import { submitWithoutReset } from '@/lib/submitWithoutReset';
 
 type Props = { drink: Pick<Drink, 'id' | 'name' | 'unitsPerCase' | 'isActive'>; isAdmin: boolean };
 
@@ -75,7 +76,7 @@ function DrinkEditForm({
   }, [state]);
 
   return (
-    <form action={formAction} className="space-y-2 rounded border bg-gray-50 p-3">
+    <form onSubmit={submitWithoutReset(formAction)} className="space-y-2 rounded border bg-gray-50 p-3">
       <input type="hidden" name="id" value={drink.id} />
       <div className="flex flex-wrap gap-2">
         <label className="min-w-0 flex-1">

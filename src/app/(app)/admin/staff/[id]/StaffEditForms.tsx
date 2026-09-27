@@ -5,6 +5,7 @@ import { initialFormState, type FormState } from '@/lib/formState';
 import { canAssignRole, ROLE_LABELS } from '@/lib/permissions';
 import type { Location, Role, Staff } from '@/lib/types';
 import { resetPinAction, unlockStaffAction, updateStaffAction } from '../actions';
+import { submitWithoutReset } from '@/lib/submitWithoutReset';
 
 function Feedback({ state }: { state: FormState }) {
   if (state.error)
@@ -60,7 +61,7 @@ export function StaffEditForms({
 
   return (
     <div className="space-y-4">
-      <form action={updateAction} className="space-y-3 rounded border bg-white p-4">
+      <form onSubmit={submitWithoutReset(updateAction)} className="space-y-3 rounded border bg-white p-4">
         <input type="hidden" name="id" value={staff.id} />
         <label className="block">
           <span className="mb-1 block text-sm">名前</span>
@@ -115,7 +116,7 @@ export function StaffEditForms({
       </form>
 
       {canSetPin ? (
-        <form action={pinAction} className="space-y-3 rounded border bg-white p-4">
+        <form onSubmit={submitWithoutReset(pinAction)} className="space-y-3 rounded border bg-white p-4">
           <input type="hidden" name="id" value={staff.id} />
           <label className="block">
             <span className="mb-1 block text-sm">新しいPIN</span>
@@ -147,7 +148,7 @@ export function StaffEditForms({
       )}
 
       {isLocked && (
-        <form action={unlockAction} className="space-y-3 rounded border border-red-300 bg-white p-4">
+        <form onSubmit={submitWithoutReset(unlockAction)} className="space-y-3 rounded border border-red-300 bg-white p-4">
           <input type="hidden" name="id" value={staff.id} />
           <p className="text-sm text-red-700">PINを5回間違えたためロックされています。</p>
           <Feedback state={unlockState} />

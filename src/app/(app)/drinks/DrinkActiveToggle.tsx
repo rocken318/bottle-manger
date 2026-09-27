@@ -3,12 +3,13 @@
 import { useActionState } from 'react';
 import { initialFormState } from '@/lib/formState';
 import { setDrinkActiveAction } from './actions';
+import { submitWithoutReset } from '@/lib/submitWithoutReset';
 
 export function DrinkActiveToggle({ id, isActive }: { id: string; isActive: boolean }) {
   const [state, formAction, pending] = useActionState(setDrinkActiveAction, initialFormState);
 
   return (
-    <form action={formAction} className="flex items-center gap-2">
+    <form onSubmit={submitWithoutReset(formAction)} className="flex items-center gap-2">
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="isActive" value={String(!isActive)} />
       <button disabled={pending} className="text-sm text-blue-700 underline disabled:opacity-50">

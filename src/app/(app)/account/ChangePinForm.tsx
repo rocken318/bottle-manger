@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from 'react';
 import { initialFormState } from '@/lib/formState';
 import { changeOwnPinAction } from './actions';
+import { submitWithoutReset } from '@/lib/submitWithoutReset';
 
 const PIN_INPUT = 'w-full rounded border px-3 py-2 tracking-widest';
 
@@ -21,7 +22,7 @@ export function ChangePinForm() {
   }, [state]);
 
   return (
-    <form action={formAction} className="space-y-3 rounded border bg-white p-4">
+    <form onSubmit={submitWithoutReset(formAction)} className="space-y-3 rounded border bg-white p-4">
       <h2 className="font-bold">PINを変更</h2>
       <label className="block">
         <span className="mb-1 block text-sm">現在のPIN</span>

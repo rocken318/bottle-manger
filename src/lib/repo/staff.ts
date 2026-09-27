@@ -173,7 +173,7 @@ export async function resetPin(db: Db, actorId: string | null, id: string, pin: 
   });
 }
 
-export async function unlockStaff(db: Db, actorId: string, id: string): Promise<void> {
+export async function unlockStaff(db: Db, actorId: string | null, id: string): Promise<void> {
   await db.transaction(async (tx) => {
     // Unlocking lets someone keep guessing the PIN, so it follows the same rule as editing.
     if (!canEditStaff(await actorRole(tx, actorId), await targetRole(tx, id), id === actorId)) {

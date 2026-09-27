@@ -120,6 +120,8 @@ test('staff can change their own PIN', async ({ page }) => {
   await page.getByLabel('PIN').fill('5678');
   await page.getByRole('button', { name: 'ログイン' }).click();
   await expect(page.getByText('PINが違います')).toBeVisible();
+  // The chosen name stays selected after a failed login (no automatic form reset)
+  await expect(page.getByLabel('名前').locator('option:checked')).toHaveText('花子');
 
   await login(page, '花子', '2468');
 });
@@ -285,6 +287,16 @@ test('master role: only the master manages admins', async ({ page }) => {
   await page.getByLabel('権限').selectOption({ label: '管理者' });
   await page.getByRole('button', { name: '登録', exact: true }).click();
   await expect(page.getByText('次郎 を登録しました')).toBeVisible();
+
+  // After saving, the edit form keeps showing the saved values (it used to jump back to 「スタッフ」)
+  await page.getByRole('link', { name: /次郎/ }).click();
+  await expect(page.getByRole('heading', { name: '次郎' })).toBeVisible();
+  await page.getByLabel('所属拠点').selectOption({ label: 'Kingyo' });
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await expect(page.getByText('保存しました')).toBeVisible();
+  await expect(page.getByLabel('権限').locator('option:checked')).toHaveText('管理者');
+  await expect(page.getByLabel('所属拠点').locator('option:checked')).toHaveText('Kingyo');
+  await expect(page.getByLabel('名前')).toHaveValue('次郎');
   await page.getByRole('button', { name: 'ログアウト' }).click();
 
   // 次郎 (admin) cannot touch the master or hand out the admin role…
