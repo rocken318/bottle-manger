@@ -70,6 +70,7 @@ export default async function CostsVariancePage({
           <li>「ボトル別の差異」は、ずれの金額が大きいボトル順に並びます。</li>
           <li>「棚卸の明細」で、いつ・だれが数えたかがわかります。ずれが大きい行は赤く「要確認」と表示されます（基準は「設定」タブで変えられます）。</li>
           <li>割れた・試飲で出したなど理由がわかっている分は、「入力」の「破損・廃棄」で登録すると、ここの差異（原因不明のロス）に入りません。</li>
+          <li>いちばん下の「破損・廃棄」で、理由ごとの金額と、1件ずつの状況・写真を確認できます。写真を押すと大きく表示されます。</li>
         </ul>
       </PageHelp>
       <CostFilterForm action="/admin/costs/variance" filter={filter} locations={locations} notice={notice} />
