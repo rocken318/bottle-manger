@@ -10,6 +10,7 @@ import type { DisposeReason } from '@/lib/types';
 import { PhotoThumbs } from '../../../PhotoThumbs';
 import { listLocations } from '@/lib/repo/locations';
 import { getCostSettings } from '@/lib/repo/settings';
+import { PageHelp } from '../../../PageHelp';
 import { CostFilterForm, CostsNav, CsvLinks, MissingPriceWarning, VoidNote } from '../CostsShared';
 
 const signed = (n: number) => (n > 0 ? `+${formatYen(n)}` : formatYen(n));
@@ -60,6 +61,17 @@ export default async function CostsVariancePage({
   return (
     <div className="space-y-4">
       <CostsNav current="variance" filter={filter} />
+      <PageHelp>
+        <ul>
+          <li>棚卸で「記録上の数（帳簿）」と「実際に数えた数（実数）」がどれだけずれたかを確認する画面です。</li>
+          <li>開始月・終了月・拠点を選んで「表示」を押します。</li>
+          <li>差異がマイナスなら、記録より実物が少ない（ロス）ということです。販売や入荷の入力もれがないか確認しましょう。</li>
+          <li>「店舗 × 月のロス」で、どの拠点のどの月にロスが多いかを見ます。</li>
+          <li>「ボトル別の差異」は、ずれの金額が大きいボトル順に並びます。</li>
+          <li>「棚卸の明細」で、いつ・だれが数えたかがわかります。ずれが大きい行は赤く「要確認」と表示されます（基準は「設定」タブで変えられます）。</li>
+          <li>割れた・試飲で出したなど理由がわかっている分は、「入力」の「破損・廃棄」で登録すると、ここの差異（原因不明のロス）に入りません。</li>
+        </ul>
+      </PageHelp>
       <CostFilterForm action="/admin/costs/variance" filter={filter} locations={locations} notice={notice} />
       <VoidNote />
       <p className="text-xs text-gray-600">

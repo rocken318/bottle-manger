@@ -4,6 +4,7 @@ import { getDb } from '@/lib/db/client';
 import { listDrinks } from '@/lib/repo/drinks';
 import { DrinkCreateForm } from './DrinkCreateForm';
 import { DrinkRow } from './DrinkRow';
+import { PageHelp } from '../PageHelp';
 import { isAdminRole } from '@/lib/permissions';
 
 export default async function DrinksPage({
@@ -18,6 +19,16 @@ export default async function DrinksPage({
 
   return (
     <div className="space-y-4">
+      <PageHelp>
+        <ul>
+          <li>新しいボトルは「ボトル名」と「1ケースの本数」を入れて「登録」を押します。</li>
+          <li>1ケースの本数は、入力や在庫を「ケース＋本」で表示するのに使います。正しい数を入れてください。</li>
+          <li>名前や1ケースの本数をまちがえたときは、一覧の「編集」から直せます。</li>
+          <li>もう扱わないボトルは「廃止」にすると、入力や在庫一覧に出なくなります（管理者・マスターのみ）。</li>
+          <li>廃止できるのは、全部の拠点で在庫が0本のときだけです。残っているときは棚卸などで0本にしてから廃止します。</li>
+          <li>「廃止済みも表示」を押すと廃止したボトルも表示され、「復活」で元に戻せます。</li>
+        </ul>
+      </PageHelp>
       <DrinkCreateForm />
       <div className="flex items-center justify-between">
         <h2 className="font-bold">ボトル一覧</h2>

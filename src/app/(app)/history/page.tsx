@@ -9,6 +9,7 @@ import { listLocations } from '@/lib/repo/locations';
 import { listMovements } from '@/lib/repo/movements';
 import { listStaff } from '@/lib/repo/staff';
 import type { MovementType } from '@/lib/types';
+import { PageHelp } from '../PageHelp';
 import { VoidButton } from './VoidButton';
 import { PhotoThumbs } from '../PhotoThumbs';
 
@@ -33,6 +34,18 @@ export default async function HistoryPage({
 
   return (
     <div className="space-y-4">
+      <PageHelp>
+        <ul>
+          <li>入荷・販売・移動・棚卸などの記録が、新しい順に並びます（最大200件）。</li>
+          <li>拠点・ボトル・スタッフ・種類・日付を選んで「絞り込む」を押すと、見たい記録だけにできます。</li>
+          <li>「条件をクリア」で絞り込みを元に戻します。</li>
+          <li>まちがえた記録は「取り消し」→「本当に取り消す」で取り消せます。在庫の数も元に戻ります。</li>
+          <li>スタッフが取り消せるのは、自分が入力した24時間以内の記録だけです。管理者・マスターはどの記録でも取り消せます。</li>
+          <li>取り消した記録は消えずに、灰色の線付きで「取り消し済み」と表示されます。</li>
+          <li>数をまちがえたときは、取り消してから「入力」で正しい数を入れ直してください。</li>
+          <li>「CSV出力」を押すと、今の絞り込み条件の記録をファイルでダウンロードできます（Excelなどで開けます）。</li>
+        </ul>
+      </PageHelp>
       <form className="grid grid-cols-2 gap-2 rounded border bg-white p-3 text-sm sm:grid-cols-3">
         <select name="location" defaultValue={filter.locationId ?? ''} aria-label="拠点" className="rounded border px-2 py-2">
           <option value="">すべての拠点</option>
