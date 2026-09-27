@@ -14,6 +14,7 @@ const MESSAGES: Record<string, string> = {
   location_not_found: '拠点が見つかりません',
   location_has_stock: '在庫が残っているため無効にできません。移動または棚卸で0本にしてから無効にしてください',
   drink_has_stock: '在庫が残っているため廃止できません。棚卸などで全拠点を0本にしてから廃止してください',
+  price_not_found: '卸価格が見つかりません（すでに削除されています）',
 };
 
 export function toUserMessage(error: unknown): string {

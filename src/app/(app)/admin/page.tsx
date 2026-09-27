@@ -19,6 +19,10 @@ const ACTION_LABELS: Record<string, string> = {
   'location.update': '拠点変更',
   'movement.void': '在庫記録の取り消し',
   'login.locked': 'PIN誤りでロック',
+  'price.create': '卸価格登録',
+  'price.update': '卸価格上書き',
+  'price.delete': '卸価格削除',
+  'settings.update': '原価の設定変更',
 };
 
 export default async function AdminPage() {
@@ -32,6 +36,9 @@ export default async function AdminPage() {
         </Link>
         <Link href="/admin/locations" className="rounded border bg-white p-4 text-center font-bold">
           拠点管理
+        </Link>
+        <Link href="/admin/costs" className="col-span-2 rounded border bg-white p-4 text-center font-bold">
+          原価・棚卸差異
         </Link>
       </div>
       <a href="/api/export/stock" className="block text-sm text-blue-700 underline">

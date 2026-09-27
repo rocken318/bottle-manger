@@ -24,4 +24,24 @@ describe('describeAuditDetails', () => {
     expect(describeAuditDetails({ action: 'drink.update', details: { name: 'コーラ' } })).toBe('コーラ');
     expect(describeAuditDetails({ action: 'login.locked', details: {} })).toBeNull();
   });
+  it('describes price and settings changes', () => {
+    expect(
+      describeAuditDetails({
+        action: 'price.create',
+        details: { name: 'コーラ', effectiveFrom: '2026-09-01', unitCost: '83.33' },
+      }),
+    ).toBe('コーラ 2026-09-01から 1本83.33円');
+    expect(
+      describeAuditDetails({
+        action: 'price.update',
+        details: { name: 'コーラ', effectiveFrom: '2026-09-01', unitCost: '90.00', before: { unitCost: '83.33' } },
+      }),
+    ).toBe('コーラ 2026-09-01から 1本83.33円 → 90円');
+    expect(
+      describeAuditDetails({
+        action: 'settings.update',
+        details: { before: { taxRate: 10, varianceQtyThreshold: 5 }, after: { taxRate: 8, varianceQtyThreshold: 3 } },
+      }),
+    ).toBe('消費税率 10% → 8%、差異の本数 5本 → 3本');
+  });
 });
