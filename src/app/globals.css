@@ -1,1 +1,21 @@
 @import "tailwindcss";
+
+/*
+ * iOS Safari gives date/month inputs an intrinsic width that ignores `width: 100%`, so they spill
+ * out of narrow grid cells. Dropping the native appearance there lets them size like text inputs.
+ */
+@supports (-webkit-touch-callout: none) {
+  input[type='date'],
+  input[type='month'] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+    min-height: 2.625rem;
+    background-color: white;
+    text-align: left;
+  }
+  input[type='date']::-webkit-date-and-time-value,
+  input[type='month']::-webkit-date-and-time-value {
+    text-align: left;
+  }
+}
