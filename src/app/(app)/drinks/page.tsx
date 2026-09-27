@@ -19,7 +19,7 @@ export default async function DrinksPage({
     <div className="space-y-4">
       <DrinkCreateForm />
       <div className="flex items-center justify-between">
-        <h2 className="font-bold">ドリンク一覧</h2>
+        <h2 className="font-bold">ボトル一覧</h2>
         <Link href={showAll ? '/drinks' : '/drinks?all=1'} className="text-sm text-blue-700 underline">
           {showAll ? '廃止済みを隠す' : '廃止済みも表示'}
         </Link>

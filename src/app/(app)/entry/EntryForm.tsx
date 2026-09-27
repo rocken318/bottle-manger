@@ -251,7 +251,7 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
       ) : (
         <>
           {type === 'adjust' && (
-            <p className="text-sm text-gray-600">実際に数えた数を入力してください（入力したドリンクだけ登録されます）。</p>
+            <p className="text-sm text-gray-600">実際に数えた数を入力してください（入力したボトルだけ登録されます）。</p>
           )}
 
           <div className="space-y-1">
@@ -259,20 +259,20 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
               type="search"
               value={query}
               onChange={(e) => changeQuery(e.target.value)}
-              placeholder="ドリンク名で絞り込み"
+              placeholder="ボトル名で絞り込み"
               aria-label="絞り込み"
               className="w-full rounded border bg-white px-3 py-2"
             />
           </div>
 
           {visible.length === 0 ? (
-            <p className="text-sm text-gray-500">該当するドリンクがありません</p>
+            <p className="text-sm text-gray-500">該当するボトルがありません</p>
           ) : (
             <div className="overflow-x-auto rounded border bg-white">
               <table className="w-full text-sm">
                 <thead className="bg-gray-100 text-xs">
                   <tr>
-                    <th className="px-2 py-2 text-left">ドリンク</th>
+                    <th className="px-2 py-2 text-left">ボトル</th>
                     <th className="w-16 px-1 py-2 text-center">ケース</th>
                     <th className="w-16 px-1 py-2 text-center">本</th>
                   </tr>

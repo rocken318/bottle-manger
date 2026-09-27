@@ -1,8 +1,8 @@
-# ドリンク在庫管理システム Implementation Plan
+# ボトル在庫管理システム Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 5 拠点（事務所・Kingyo・B-club・暖家・En）のドリンク在庫を、スタッフがスマホから入荷・販売・移動・棚卸で管理し、すべての操作を記録する Web アプリを作る。
+**Goal:** 5 拠点（事務所・Kingyo・B-club・暖家・En）のボトル在庫を、スタッフがスマホから入荷・販売・移動・棚卸で管理し、すべての操作を記録する Web アプリを作る。
 
 **Architecture:** Next.js（App Router）のサーバー側だけが Postgres（Supabase）に `DATABASE_URL` で直接接続する。在庫数は保存せず、`stock_movements`（在庫の動きの台帳）を集計するビュー `stock_levels` で求める。在庫を変える処理は PL/pgSQL 関数 `apply_movements` / `void_movement` の中で、アドバイザリロックを取ったうえで 1 トランザクションで行う。認証は名前選択 + PIN（bcrypt）で、署名付き JWT を httpOnly Cookie に保存する。
 
@@ -66,7 +66,7 @@ src/lib/
   auth/current.ts            getCurrentStaff / requireStaff / requireAdmin / Cookie 操作
   repo/audit.ts              操作ログ
   repo/staff.ts              スタッフ
-  repo/drinks.ts             ドリンク
+  repo/drinks.ts             ボトル
   repo/locations.ts          拠点
   repo/stock.ts              在庫の集計と登録
   repo/movements.ts          履歴と取り消し
@@ -77,7 +77,7 @@ src/app/
   (app)/page.tsx / (app)/StockView.tsx                      在庫
   (app)/entry/page.tsx / EntryForm.tsx / DrinkPicker.tsx / actions.ts   入力
   (app)/history/page.tsx / VoidButton.tsx / actions.ts      履歴
-  (app)/drinks/page.tsx / DrinkCreateForm.tsx / actions.ts  ドリンク
+  (app)/drinks/page.tsx / DrinkCreateForm.tsx / actions.ts  ボトル
   (app)/admin/page.tsx                                      管理トップ + 操作ログ
   (app)/admin/staff/page.tsx / StaffCreateForm.tsx / actions.ts
   (app)/admin/staff/[id]/page.tsx / StaffEditForms.tsx
@@ -227,7 +227,7 @@ SESSION_SECRET=change-me-to-a-random-string-of-at-least-32-chars
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
-export const metadata: Metadata = { title: 'ドリンク在庫' };
+export const metadata: Metadata = { title: 'ボトル在庫' };
 export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -242,7 +242,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 `src/app/page.tsx`（仮）:
 ```tsx
 export default function Page() {
-  return <main className="p-4">ドリンク在庫</main>;
+  return <main className="p-4">ボトル在庫</main>;
 }
 ```
 
@@ -699,7 +699,7 @@ describe('apply_movements', () => {
   });
 
   it('rolls back the whole batch when a drink is inactive', async () => {
-    const retired = await insertDrink(db, '廃止ドリンク', 12);
+    const retired = await insertDrink(db, '廃止ボトル', 12);
     await db.query('update drinks set is_active = false where id = $1', [retired]);
     await expect(
       apply(crypto.randomUUID(), [
@@ -1641,7 +1641,7 @@ describe('toUserMessage', () => {
     expect(toUserMessage(Object.assign(new Error('dup'), { code: '23505' }))).toBe('同じ名前がすでに登録されています');
   });
   it('maps known domain errors', () => {
-    expect(toUserMessage(new Error('inactive_drink'))).toBe('廃止されたドリンクが含まれています');
+    expect(toUserMessage(new Error('inactive_drink'))).toBe('廃止されたボトルが含まれています');
     expect(toUserMessage(new Error('already_voided'))).toBe('この記録はすでに取り消されています');
   });
   it('hides unknown errors', () => {
@@ -1688,7 +1688,7 @@ export const entrySchema = z
     batchId: uuid,
     confirmNegative: z.boolean(),
     note: z.string().trim().max(200, 'メモは200文字以内にしてください').optional(),
-    items: z.array(movementItemSchema).min(1, 'ドリンクを選んでください').max(50, '一度に登録できるのは50件までです'),
+    items: z.array(movementItemSchema).min(1, 'ボトルを選んでください').max(50, '一度に登録できるのは50件までです'),
   })
   .superRefine((value, ctx) => {
     value.items.forEach((item, i) => {
@@ -1745,7 +1745,7 @@ export const locationSchema = z.object({
 `src/lib/errors.ts`:
 ```ts
 const MESSAGES: Record<string, string> = {
-  inactive_drink: '廃止されたドリンクが含まれています',
+  inactive_drink: '廃止されたボトルが含まれています',
   inactive_location: '無効になった拠点が含まれています',
   already_voided: 'この記録はすでに取り消されています',
   movement_not_found: '記録が見つかりません',
@@ -2400,7 +2400,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 10: ドリンク・拠点・在庫・履歴のリポジトリ
+### Task 10: ボトル・拠点・在庫・履歴のリポジトリ
 
 **Files:**
 - Create: `src/lib/repo/drinks.ts`, `src/lib/repo/locations.ts`, `src/lib/repo/movements.ts`
@@ -2586,7 +2586,7 @@ describe('movements repository', () => {
 Run: `npx vitest run tests/db`
 Expected: 新しい 4 ファイルが FAIL
 
-- [ ] **Step 3: ドリンクと拠点のリポジトリを実装する**
+- [ ] **Step 3: ボトルと拠点のリポジトリを実装する**
 
 `src/lib/repo/drinks.ts`:
 ```ts
@@ -2698,7 +2698,7 @@ export async function updateLocation(
 
 `src/lib/errors.ts` の `MESSAGES` に 2 行追加する:
 ```ts
-  drink_not_found: 'ドリンクが見つかりません',
+  drink_not_found: 'ボトルが見つかりません',
   location_not_found: '拠点が見つかりません',
 ```
 
@@ -2818,7 +2818,7 @@ Expected: すべて PASS
 
 ```bash
 git add -A
-git commit -m "feat: ドリンク・拠点・在庫・履歴のリポジトリを追加
+git commit -m "feat: ボトル・拠点・在庫・履歴のリポジトリを追加
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -2935,7 +2935,7 @@ export default async function LoginPage() {
   const names = await listLoginNames(getDb());
   return (
     <main className="mx-auto max-w-sm px-4 py-12">
-      <h1 className="mb-6 text-center text-xl font-bold">ドリンク在庫</h1>
+      <h1 className="mb-6 text-center text-xl font-bold">ボトル在庫</h1>
       <LoginForm names={names} />
     </main>
   );
@@ -3001,7 +3001,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="mx-auto min-h-dvh max-w-4xl pb-20">
       <header className="flex items-center justify-between border-b bg-white px-4 py-2 text-sm">
-        <span className="font-bold">ドリンク在庫</span>
+        <span className="font-bold">ボトル在庫</span>
         <form action={logoutAction} className="flex items-center gap-3">
           <span>{staff.name}</span>
           <button className="text-blue-600 underline">ログアウト</button>
@@ -3025,7 +3025,7 @@ const ITEMS = [
   { href: '/', label: '在庫' },
   { href: '/entry', label: '入力' },
   { href: '/history', label: '履歴' },
-  { href: '/drinks', label: 'ドリンク' },
+  { href: '/drinks', label: 'ボトル' },
 ];
 
 export function BottomNav({ isAdmin }: { isAdmin: boolean }) {
@@ -3159,20 +3159,20 @@ export function StockView({ locations, drinks, levels, defaultLocationId }: Prop
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="ドリンク名"
+            placeholder="ボトル名"
             className="w-full rounded border bg-white px-3 py-2"
           />
         </label>
       </div>
 
-      {visible.length === 0 && <p className="text-gray-500">該当するドリンクがありません</p>}
+      {visible.length === 0 && <p className="text-gray-500">該当するボトルがありません</p>}
 
       {locationId === 'all' ? (
         <div className="overflow-x-auto rounded border bg-white">
           <table className="min-w-full text-sm">
             <thead className="bg-gray-100">
               <tr>
-                <th className="sticky left-0 bg-gray-100 px-3 py-2 text-left">ドリンク</th>
+                <th className="sticky left-0 bg-gray-100 px-3 py-2 text-left">ボトル</th>
                 {locations.map((l) => (
                   <th key={l.id} className="whitespace-nowrap px-3 py-2 text-right">
                     {l.name}
@@ -3244,7 +3244,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 13: ドリンクの登録・廃止
+### Task 13: ボトルの登録・廃止
 
 **Files:**
 - Create: `src/app/(app)/drinks/page.tsx`, `src/app/(app)/drinks/DrinkCreateForm.tsx`, `src/app/(app)/drinks/actions.ts`
@@ -3302,10 +3302,10 @@ export function DrinkCreateForm() {
   const [state, formAction, pending] = useActionState(createDrinkAction, initialFormState);
   return (
     <form action={formAction} className="space-y-3 rounded border bg-white p-4">
-      <h2 className="font-bold">ドリンクを登録</h2>
+      <h2 className="font-bold">ボトルを登録</h2>
       <div className="flex flex-wrap gap-3">
         <label className="flex-1">
-          <span className="mb-1 block text-sm">ドリンク名</span>
+          <span className="mb-1 block text-sm">ボトル名</span>
           <input name="name" required maxLength={50} className="w-full rounded border px-3 py-2" />
         </label>
         <label className="w-32">
@@ -3356,7 +3356,7 @@ export default async function DrinksPage({
     <div className="space-y-4">
       <DrinkCreateForm />
       <div className="flex items-center justify-between">
-        <h2 className="font-bold">ドリンク一覧</h2>
+        <h2 className="font-bold">ボトル一覧</h2>
         <Link href={showAll ? '/drinks' : '/drinks?all=1'} className="text-sm text-blue-700 underline">
           {showAll ? '廃止済みを隠す' : '廃止済みも表示'}
         </Link>
@@ -3392,7 +3392,7 @@ Expected: どちらも成功
 
 ```bash
 git add -A
-git commit -m "feat: ドリンクの登録と廃止・復活を追加
+git commit -m "feat: ボトルの登録と廃止・復活を追加
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -3465,7 +3465,7 @@ export async function submitEntry(payload: unknown): Promise<EntryResult> {
 }
 ```
 
-- [ ] **Step 2: ドリンクの選択部品を書く**
+- [ ] **Step 2: ボトルの選択部品を書く**
 
 `src/app/(app)/entry/DrinkPicker.tsx`:
 ```tsx
@@ -3496,7 +3496,7 @@ export function DrinkPicker({ drinks, value, onChange, label }: Props) {
         aria-label={label}
         className="min-w-0 flex-1 rounded border bg-white px-2 py-2"
       >
-        <option value="">ドリンクを選択</option>
+        <option value="">ボトルを選択</option>
         {options.map((d) => (
           <option key={d.id} value={d.id}>
             {d.name}
@@ -3556,12 +3556,12 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId }: Prop
 
   function buildItems(): { items: unknown[] } | { error: string } {
     const filled = lines.filter((l) => l.drinkId);
-    if (filled.length === 0) return { error: 'ドリンクを選んでください' };
+    if (filled.length === 0) return { error: 'ボトルを選んでください' };
     if (type === 'transfer' && locationId === destinationId) return { error: '移動元と移動先が同じです' };
     const items: unknown[] = [];
     for (const line of filled) {
       const drink = drinkById.get(line.drinkId);
-      if (!drink) return { error: 'ドリンクを選び直してください' };
+      if (!drink) return { error: 'ボトルを選び直してください' };
       const cases = toInt(line.cases);
       const bottles = toInt(line.bottles);
       if (!Number.isInteger(cases) || !Number.isInteger(bottles) || cases < 0 || bottles < 0) {
@@ -3683,7 +3683,7 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId }: Prop
                 drinks={drinks}
                 value={line.drinkId}
                 onChange={(id) => updateLine(line.key, { drinkId: id })}
-                label={`ドリンク${i + 1}`}
+                label={`ボトル${i + 1}`}
               />
               <div className="flex items-center gap-2">
                 <input
@@ -3732,7 +3732,7 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId }: Prop
         onClick={() => setLines((prev) => [...prev, newLine()])}
         className="w-full rounded border border-dashed py-2 text-sm text-gray-600"
       >
-        ＋ ドリンクを追加
+        ＋ ボトルを追加
       </button>
 
       <label className="block">
@@ -3796,7 +3796,7 @@ export default async function EntryPage() {
   const db = getDb();
   const [drinks, locations, levels] = await Promise.all([listDrinks(db), listLocations(db), getStockLevels(db)]);
   if (locations.length === 0) return <p>有効な拠点がありません。管理者に連絡してください。</p>;
-  if (drinks.length === 0) return <p>ドリンクが登録されていません。「ドリンク」タブから登録してください。</p>;
+  if (drinks.length === 0) return <p>ボトルが登録されていません。「ボトル」タブから登録してください。</p>;
   const defaultLocationId = locations.find((l) => l.id === staff.homeLocationId)?.id ?? locations[0].id;
   return <EntryForm drinks={drinks} locations={locations} levels={levels} defaultLocationId={defaultLocationId} />;
 }
@@ -3947,8 +3947,8 @@ export default async function HistoryPage({
             </option>
           ))}
         </select>
-        <select name="drink" defaultValue={filter.drinkId ?? ''} aria-label="ドリンク" className="rounded border px-2 py-2">
-          <option value="">すべてのドリンク</option>
+        <select name="drink" defaultValue={filter.drinkId ?? ''} aria-label="ボトル" className="rounded border px-2 py-2">
+          <option value="">すべてのボトル</option>
           {drinks.map((d) => (
             <option key={d.id} value={d.id}>
               {d.name}
@@ -4031,7 +4031,7 @@ export async function GET(request: NextRequest) {
   const filter = parseMovementFilter(Object.fromEntries(request.nextUrl.searchParams));
   const rows = await listMovements(getDb(), filter, 50000);
   const csv = toCsv(
-    ['日時', '種類', 'ドリンク', '移動元', '移動先', '本数（棚卸は差分）', '棚卸の実数', 'メモ', '操作した人', '取り消し日時', '取り消した人'],
+    ['日時', '種類', 'ボトル', '移動元', '移動先', '本数（棚卸は差分）', '棚卸の実数', 'メモ', '操作した人', '取り消し日時', '取り消した人'],
     rows.map((m) => [
       formatDateTime(m.createdAt),
       MOVEMENT_TYPE_LABELS[m.type],
@@ -4072,7 +4072,7 @@ export async function GET() {
   const [locations, drinks, levels] = await Promise.all([listLocations(db), listDrinks(db), getStockLevels(db)]);
   const qty = new Map(levels.map((l) => [`${l.locationId}:${l.drinkId}`, l.quantity]));
   const csv = toCsv(
-    ['ドリンク', '1ケースの本数', ...locations.map((l) => `${l.name}（本）`), '合計（本）'],
+    ['ボトル', '1ケースの本数', ...locations.map((l) => `${l.name}（本）`), '合計（本）'],
     drinks.map((d) => {
       const perLocation = locations.map((l) => qty.get(`${l.id}:${d.id}`) ?? 0);
       return [d.name, d.unitsPerCase, ...perLocation, perLocation.reduce((a, b) => a + b, 0)];
@@ -4125,9 +4125,9 @@ const ACTION_LABELS: Record<string, string> = {
   'staff.update': 'スタッフ変更',
   'staff.reset_pin': 'PINリセット',
   'staff.unlock': 'ロック解除',
-  'drink.create': 'ドリンク登録',
-  'drink.deactivate': 'ドリンク廃止',
-  'drink.activate': 'ドリンク復活',
+  'drink.create': 'ボトル登録',
+  'drink.deactivate': 'ボトル廃止',
+  'drink.activate': 'ボトル復活',
   'location.create': '拠点追加',
   'location.update': '拠点変更',
   'movement.void': '在庫記録の取り消し',
@@ -4750,15 +4750,15 @@ test('receive, transfer, check stock and void', async ({ page }) => {
   await login(page, '管理者', '1234');
 
   // Register a drink
-  await page.getByRole('link', { name: 'ドリンク', exact: true }).click();
-  await page.getByLabel('ドリンク名').fill('コーラ');
+  await page.getByRole('link', { name: 'ボトル', exact: true }).click();
+  await page.getByLabel('ボトル名').fill('コーラ');
   await page.getByLabel('1ケースの本数').fill('24');
   await page.getByRole('button', { name: '登録', exact: true }).click();
   await expect(page.getByText('コーラ を登録しました')).toBeVisible();
 
   // Receive 2 cases at 事務所 (the admin's home location)
   await page.getByRole('link', { name: '入力', exact: true }).click();
-  await page.getByLabel('ドリンク1', { exact: true }).selectOption({ label: 'コーラ' });
+  await page.getByLabel('ボトル1', { exact: true }).selectOption({ label: 'コーラ' });
   await page.getByLabel('ケース1').fill('2');
   await page.getByRole('button', { name: '登録する' }).click();
   await expect(page.getByText('1件登録しました')).toBeVisible();
@@ -4766,7 +4766,7 @@ test('receive, transfer, check stock and void', async ({ page }) => {
   // Transfer 5 bottles to Kingyo
   await page.getByRole('button', { name: '移動', exact: true }).click();
   await page.getByLabel('移動先').selectOption({ label: 'Kingyo' });
-  await page.getByLabel('ドリンク1', { exact: true }).selectOption({ label: 'コーラ' });
+  await page.getByLabel('ボトル1', { exact: true }).selectOption({ label: 'コーラ' });
   await page.getByLabel('本1').fill('5');
   await page.getByRole('button', { name: '登録する' }).click();
   await expect(page.getByText('1件登録しました')).toBeVisible();
@@ -4870,7 +4870,7 @@ Expected: `created admin: <名前> (...)`
 - [ ] **Step 5: ローカルで本番 DB につないで動作を確認する**
 
 Run: `npm run dev`
-ブラウザで http://localhost:3000 を開き、管理者でログインできること、在庫・入力・履歴・ドリンク・管理の各タブが表示されることを確認する。確認したら dev サーバーを止める。
+ブラウザで http://localhost:3000 を開き、管理者でログインできること、在庫・入力・履歴・ボトル・管理の各タブが表示されることを確認する。確認したら dev サーバーを止める。
 
 - [ ] **Step 6: Vercel の設定ファイルと README を書く**
 
@@ -4883,9 +4883,9 @@ Run: `npm run dev`
 
 `README.md`:
 ````markdown
-# ドリンク在庫管理
+# ボトル在庫管理
 
-事務所・各店舗のドリンク在庫を、入荷・販売・移動・棚卸で管理する Web アプリ。
+事務所・各店舗のボトル在庫を、入荷・販売・移動・棚卸で管理する Web アプリ。
 
 ## 開発
 
@@ -4928,15 +4928,15 @@ GitHub にリポジトリを作って push するか、`npx vercel` で直接デ
 
 公開 URL をスマホで開き、次を確認する:
 - 管理者でログインできる
-- ドリンクを 1 つ登録し、入荷 → 在庫に反映される
+- ボトルを 1 つ登録し、入荷 → 在庫に反映される
 - 履歴で取り消せる
 - 管理 → 操作ログに記録が出る
 
-確認に使ったテスト用のデータは、ドリンクを廃止し、入荷記録を取り消して片付ける。
+確認に使ったテスト用のデータは、ボトルを廃止し、入荷記録を取り消して片付ける。
 
 ---
 
 ## Self-Review メモ（計画作成時に確認済み）
 
-- 設計書との対応: 拠点 5 つ（Task 2）/ PIN ログイン・ロック（Task 8, 9, 11）/ ケース + バラ（Task 5, 14）/ 入荷・販売・移動・棚卸（Task 3, 14）/ 在庫マイナス確認（Task 7, 14）/ 取り消しルール（Task 6, 15）/ ドリンク登録は全員・廃止は管理者（Task 13）/ 全拠点一覧・検索（Task 12）/ CSV（Task 15）/ スタッフ・拠点管理（Task 16, 17）/ 操作ログ（Task 9, 16）/ 冪等性・アドバイザリロック（Task 3, 14）/ RLS（Task 4）/ 公開（Task 19）
+- 設計書との対応: 拠点 5 つ（Task 2）/ PIN ログイン・ロック（Task 8, 9, 11）/ ケース + バラ（Task 5, 14）/ 入荷・販売・移動・棚卸（Task 3, 14）/ 在庫マイナス確認（Task 7, 14）/ 取り消しルール（Task 6, 15）/ ボトル登録は全員・廃止は管理者（Task 13）/ 全拠点一覧・検索（Task 12）/ CSV（Task 15）/ スタッフ・拠点管理（Task 16, 17）/ 操作ログ（Task 9, 16）/ 冪等性・アドバイザリロック（Task 3, 14）/ RLS（Task 4）/ 公開（Task 19）
 - 対象外（金額・在庫が少ないときの警告・B モード・カテゴリ・＋1 ボタン）は実装しない

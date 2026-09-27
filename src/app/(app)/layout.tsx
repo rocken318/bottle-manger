@@ -8,7 +8,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="mx-auto min-h-dvh max-w-4xl pb-20">
       <header className="flex items-center justify-between gap-3 border-b bg-white px-4 py-2 text-sm">
-        <span className="min-w-0 truncate font-bold">遊栄ドリンク在庫管理システム</span>
+        <span className="min-w-0 truncate font-bold">遊栄ボトル在庫管理システム</span>
         <div className="flex shrink-0 items-center gap-3">
           <Link href="/account" className="max-w-[8rem] truncate text-blue-700 underline" title="アカウント・PIN変更">
             {staff.name}

@@ -11,7 +11,7 @@ export default async function LoginPage() {
   const names = await listLoginNames(getDb());
   return (
     <main className="mx-auto max-w-sm px-4 py-12">
-      <h1 className="mb-6 text-center text-xl font-bold">遊栄ドリンク在庫管理システム</h1>
+      <h1 className="mb-6 text-center text-xl font-bold">遊栄ボトル在庫管理システム</h1>
       <LoginForm names={names} />
     </main>
   );

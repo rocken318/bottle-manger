@@ -12,8 +12,8 @@ test('receive, transfer, check stock and void', async ({ page }) => {
   await login(page, '管理者', '1234');
 
   // Register a drink
-  await page.getByRole('link', { name: 'ドリンク', exact: true }).click();
-  await page.getByLabel('ドリンク名').fill('コーラ');
+  await page.getByRole('link', { name: 'ボトル', exact: true }).click();
+  await page.getByLabel('ボトル名').fill('コーラ');
   await page.getByLabel('1ケースの本数').fill('24');
   await page.getByRole('button', { name: '登録', exact: true }).click();
   await expect(page.getByText('コーラ を登録しました')).toBeVisible();
@@ -62,7 +62,7 @@ test('receive, transfer, check stock and void', async ({ page }) => {
   await expect(page.getByLabel('拠点').locator('option:checked')).toHaveText('事務所');
 
   // Anyone can edit a drink: rename コーラ → コーラ500
-  await page.getByRole('link', { name: 'ドリンク', exact: true }).click();
+  await page.getByRole('link', { name: 'ボトル', exact: true }).click();
   await page.getByRole('button', { name: 'コーラを編集' }).click();
   await page.getByLabel('コーラの名前').fill('コーラ500');
   await page.getByRole('button', { name: '保存', exact: true }).click();
@@ -127,8 +127,8 @@ test('staff can change their own PIN', async ({ page }) => {
 test('bulk entry: several drinks, hidden rows, tab switch and a zero stocktake', async ({ page }) => {
   // コーラ500 (renamed in the first test) has 48 bottles at 事務所.
   await login(page, '管理者', '1234');
-  await page.getByRole('link', { name: 'ドリンク', exact: true }).click();
-  await page.getByLabel('ドリンク名').fill('お茶');
+  await page.getByRole('link', { name: 'ボトル', exact: true }).click();
+  await page.getByLabel('ボトル名').fill('お茶');
   await page.getByLabel('1ケースの本数').fill('24');
   await page.getByRole('button', { name: '登録', exact: true }).click();
   await expect(page.getByText('お茶 を登録しました')).toBeVisible();
@@ -201,11 +201,75 @@ test('stock page: only-in-stock filter hides zero-stock drinks', async ({ page }
 
   // A location with no stock at all for either drink shows the empty message while filtered.
   await page.getByLabel('表示する拠点').selectOption({ label: 'Kingyo' });
-  await expect(page.getByText('該当するドリンクがありません')).toBeVisible();
+  await expect(page.getByText('該当するボトルがありません')).toBeVisible();
 
   // Turning it back off restores both drinks.
   await page.getByLabel('表示する拠点').selectOption({ label: '事務所' });
   await page.getByLabel('在庫があるものだけ表示').uncheck();
   await expect(page.getByRole('link', { name: 'お茶', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'コーラ500', exact: true })).toBeVisible();
+});
+
+test('costs: prices, monthly report, variance, settings and CSV', async ({ page }) => {
+  // From the earlier tests (all today): 事務所 received 72 コーラ500 (24/case) and 27 お茶,
+  // and お茶 was counted to 0 (difference −27). The voided transfer is not counted.
+  await login(page, '管理者', '1234');
+  await page.getByRole('link', { name: '管理', exact: true }).click();
+  await page.getByRole('link', { name: '原価・棚卸差異' }).click();
+  await expect(page.getByRole('heading', { name: '原価・棚卸差異' })).toBeVisible();
+  await expect(page.getByText('価格未設定のボトルがあります（2件）')).toBeVisible();
+
+  // Prices: コーラ500 by the case (2,400円 / 24本 = 100円), お茶 per bottle
+  await page.getByRole('link', { name: '卸価格', exact: true }).click();
+  await page.getByRole('combobox', { name: 'ボトル' }).selectOption({ label: 'コーラ500' });
+  await page.getByLabel(/1ケースあたり/).check();
+  await page.getByLabel('1ケースの卸価格（税抜・円）').fill('2,400');
+  await page.getByRole('button', { name: '登録', exact: true }).click();
+  await expect(page.getByText(/登録しました：1本 100円/)).toBeVisible();
+  await page.getByRole('combobox', { name: 'ボトル' }).selectOption({ label: 'お茶' });
+  await page.getByLabel('1本あたり').check();
+  await page.getByLabel('1本の卸価格（税抜・円）').fill('150');
+  await page.getByRole('button', { name: '登録', exact: true }).click();
+  await expect(page.getByText(/登録しました：1本 150円/)).toBeVisible();
+  await expect(page.getByText('現在 1本 100円')).toBeVisible();
+
+  // Monthly: purchases 7,200 + 4,050; loss 4,050; closing 7,200 → COGS 4,050, loss rate 100%
+  await page.getByRole('link', { name: '月次集計', exact: true }).click();
+  await expect(page.getByText(/価格未設定のボトルがあります/)).toHaveCount(0);
+  const office = page.getByRole('row').filter({ has: page.getByRole('rowheader', { name: '事務所' }) });
+  await expect(office).toContainText('11,250');
+  await expect(office).toContainText('1,125');
+  await expect(office).toContainText('-4,050');
+  await expect(office).toContainText('100.0%');
+
+  // Variance: the お茶 count stands out (27 bottles ≥ 5)
+  await page.getByRole('link', { name: '棚卸差異', exact: true }).click();
+  const teaRow = page.locator('tr[data-flagged]').filter({ hasText: 'お茶' });
+  await expect(teaRow).toContainText('要確認');
+  await expect(teaRow).toContainText('-4,050');
+
+  // CSV follows the same numbers
+  const csv = await page.request.get(await page.getByRole('link', { name: '月次集計', exact: true }).last().getAttribute('href') ?? '');
+  expect(csv.ok()).toBe(true);
+  expect(await csv.text()).toContain('事務所,0,11250,1125,12375,0,0,-4050,7200,4050,100.0%,0');
+
+  // Settings: tax rate 8%
+  await page.getByRole('link', { name: '設定', exact: true }).click();
+  await page.getByLabel('消費税率（%）').fill('8');
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await expect(page.getByText('保存しました')).toBeVisible();
+  await page.getByRole('link', { name: '月次集計', exact: true }).click();
+  await expect(office).toContainText('900');
+
+  // Deleting a price brings the warning back
+  await page.getByRole('link', { name: '卸価格', exact: true }).click();
+  page.once('dialog', (d) => d.accept());
+  await page.getByRole('button', { name: /お茶 .* の卸価格 を削除/ }).click();
+  await expect(page.getByText('価格未設定')).toBeVisible();
+
+  // Everything is in the audit log
+  await page.getByRole('link', { name: '← 管理' }).click();
+  await expect(page.getByText(/卸価格登録：コーラ500 .*から 1本100円/)).toBeVisible();
+  await expect(page.getByText(/原価の設定変更：消費税率 10% → 8%/)).toBeVisible();
+  await expect(page.getByText(/卸価格削除：お茶/)).toBeVisible();
 });
