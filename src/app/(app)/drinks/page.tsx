@@ -4,6 +4,7 @@ import { getDb } from '@/lib/db/client';
 import { listDrinks } from '@/lib/repo/drinks';
 import { DrinkCreateForm } from './DrinkCreateForm';
 import { DrinkRow } from './DrinkRow';
+import { isAdminRole } from '@/lib/permissions';
 
 export default async function DrinksPage({
   searchParams,
@@ -13,7 +14,7 @@ export default async function DrinksPage({
   const staff = await requireStaff();
   const showAll = (await searchParams).all === '1';
   const drinks = await listDrinks(getDb(), { includeInactive: showAll });
-  const isAdmin = staff.role === 'admin';
+  const isAdmin = isAdminRole(staff.role);
 
   return (
     <div className="space-y-4">

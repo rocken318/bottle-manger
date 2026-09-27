@@ -10,7 +10,7 @@ const pg = await PGlite.create();
 const db = wrapPglite(pg);
 await runMigrations(db);
 const [office] = await db.query<{ id: string }>(`select id from locations where name = '事務所'`);
-await createStaff(db, null, { name: '管理者', pin: '1234', role: 'admin', homeLocationId: office.id });
+await createStaff(db, null, { name: '管理者', pin: '1234', role: 'master', homeLocationId: office.id });
 
 const server = new PGLiteSocketServer({ db: pg, port: PORT, host: '127.0.0.1' });
 await server.start();

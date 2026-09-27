@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "db:migrate": "tsx --env-file=.env.local scripts/migrate.ts",
-    "db:create-admin": "tsx --env-file=.env.local scripts/create-admin.ts"
+    "db:create-admin": "tsx --env-file=.env.local scripts/create-admin.ts",
+    "db:set-role": "tsx --env-file=.env.local scripts/set-role.ts",
+    "db:reset-pin": "tsx --env-file=.env.local scripts/reset-pin.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

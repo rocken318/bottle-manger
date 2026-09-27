@@ -5,6 +5,7 @@ import { getDb } from '../db/client';
 import { getStaffById } from '../repo/staff';
 import type { Staff } from '../types';
 import { SESSION_COOKIE, SESSION_MAX_AGE_SECONDS, signSession, verifySession } from './session';
+import { isAdminRole } from '../permissions';
 
 /** The logged-in staff member, re-read from the DB on every request so deactivation takes effect immediately. */
 export const getCurrentStaff = cache(async (): Promise<Staff | null> => {
@@ -24,7 +25,7 @@ export async function requireStaff(): Promise<Staff> {
 
 export async function requireAdmin(): Promise<Staff> {
   const staff = await requireStaff();
-  if (staff.role !== 'admin') redirect('/');
+  if (!isAdminRole(staff.role)) redirect('/');
   return staff;
 }
 

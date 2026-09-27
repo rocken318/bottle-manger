@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/current';
+import { ROLE_LABELS } from '@/lib/permissions';
 import { getDb } from '@/lib/db/client';
 import { listLocations } from '@/lib/repo/locations';
 import { listStaff } from '@/lib/repo/staff';
 import { StaffCreateForm } from './StaffCreateForm';
 
 export default async function StaffAdminPage() {
-  await requireAdmin();
+  const viewer = await requireAdmin();
   const db = getDb();
   const [staff, locations] = await Promise.all([listStaff(db), listLocations(db, { includeInactive: true })]);
   const locationName = new Map(locations.map((l) => [l.id, l.name]));
@@ -17,7 +18,7 @@ export default async function StaffAdminPage() {
         ← 管理
       </Link>
       <h1 className="text-lg font-bold">スタッフ一覧</h1>
-      <StaffCreateForm locations={locations.filter((l) => l.isActive)} />
+      <StaffCreateForm locations={locations.filter((l) => l.isActive)} viewerRole={viewer.role} />
       <ul className="divide-y rounded border bg-white">
         {staff.map((s) => (
           <li key={s.id}>
@@ -25,7 +26,7 @@ export default async function StaffAdminPage() {
               <span className={s.isActive ? '' : 'text-gray-400 line-through'}>
                 {s.name}
                 <span className="ml-2 text-xs text-gray-500">
-                  {s.role === 'admin' ? '管理者' : 'スタッフ'}
+                  {ROLE_LABELS[s.role]}
                   {s.homeLocationId && `・${locationName.get(s.homeLocationId)}`}
                 </span>
               </span>

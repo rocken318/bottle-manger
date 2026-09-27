@@ -28,8 +28,13 @@ if (homeLocationName) {
 }
 // Note: the PIN passed here appears in shell history. Change it from the admin screen afterwards.
 try {
-  const staff = await createStaff(db, null, { name, pin, role: 'admin', homeLocationId });
-  console.log(`created admin: ${staff.name} (${staff.id})`);
+  // The first account becomes the master; later ones are plain admins.
+  const [{ hasMaster }] = await db.query<{ hasMaster: boolean }>(
+    `select exists(select 1 from staff where role = 'master' and is_active) as "hasMaster"`,
+  );
+  const role = hasMaster ? 'admin' : 'master';
+  const staff = await createStaff(db, null, { name, pin, role, homeLocationId });
+  console.log(`created ${role}: ${staff.name} (${staff.id})`);
   process.exit(0);
 } catch (e) {
   console.error(toUserMessage(e));

@@ -4,6 +4,7 @@ import { toCsv } from '@/lib/csv';
 import { parseCostFilter, type CostFilter } from '@/lib/costs/period';
 import { getDb } from '@/lib/db/client';
 import type { Db } from '@/lib/db/types';
+import { isAdminRole } from '@/lib/permissions';
 
 type Cell = string | number | null;
 
@@ -18,7 +19,7 @@ export async function costCsvResponse(
 ): Promise<Response> {
   const staff = await getCurrentStaff();
   if (!staff) return new Response('Unauthorized', { status: 401 });
-  if (staff.role !== 'admin') return new Response('Forbidden', { status: 403 });
+  if (!isAdminRole(staff.role)) return new Response('Forbidden', { status: 403 });
   const { filter } = parseCostFilter(Object.fromEntries(request.nextUrl.searchParams));
   const { header, rows } = await build(getDb(), filter);
   return new Response(toCsv(header, rows), {

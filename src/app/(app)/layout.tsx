@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireStaff } from '@/lib/auth/current';
 import { logoutAction } from '../login/actions';
 import { BottomNav } from './BottomNav';
+import { isAdminRole } from '@/lib/permissions';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const staff = await requireStaff();
@@ -19,7 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </header>
       <main className="px-4 py-4">{children}</main>
-      <BottomNav isAdmin={staff.role === 'admin'} />
+      <BottomNav isAdmin={isAdminRole(staff.role)} />
     </div>
   );
 }

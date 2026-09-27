@@ -2,10 +2,13 @@
 
 import { useActionState, useEffect, useState } from 'react';
 import { initialFormState } from '@/lib/formState';
-import type { Location } from '@/lib/types';
+import { canAssignRole, ROLE_LABELS } from '@/lib/permissions';
+import type { Location, Role } from '@/lib/types';
 import { createStaffAction } from './actions';
 
-export function StaffCreateForm({ locations }: { locations: Location[] }) {
+const ROLES: Role[] = ['staff', 'admin', 'master'];
+
+export function StaffCreateForm({ locations, viewerRole }: { locations: Location[]; viewerRole: Role }) {
   const [state, formAction, pending] = useActionState(createStaffAction, initialFormState);
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
@@ -58,8 +61,11 @@ export function StaffCreateForm({ locations }: { locations: Location[] }) {
             onChange={(e) => setRole(e.target.value)}
             className="w-full rounded border bg-white px-3 py-2"
           >
-            <option value="staff">スタッフ</option>
-            <option value="admin">管理者</option>
+            {ROLES.filter((r) => canAssignRole(viewerRole, r)).map((r) => (
+              <option key={r} value={r}>
+                {ROLE_LABELS[r]}
+              </option>
+            ))}
           </select>
         </label>
         <label>

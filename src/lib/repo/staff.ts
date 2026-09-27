@@ -2,6 +2,7 @@ import type { Db } from '../db/types';
 import { attemptLogin } from '../auth/login';
 import { hashPin } from '../auth/pin';
 import { LOCK_DURATION_SECONDS } from '../auth/lockout';
+import { canAssignRole, canEditStaff, canResetPin, isAdminRole } from '../permissions';
 import type { Role, Staff } from '../types';
 import { writeAudit } from './audit';
 
@@ -55,6 +56,20 @@ export async function lockStaff(db: Db, id: string): Promise<boolean> {
   return rows.length > 0;
 }
 
+/** Role of the acting staff member (null actor = a developer script, allowed everything). */
+async function actorRole(db: Db, actorId: string | null): Promise<Role> {
+  if (actorId === null) return 'master';
+  const [row] = await db.query<{ role: Role }>('select role from staff where id = $1 and is_active', [actorId]);
+  if (!row) throw new Error('forbidden_target');
+  return row.role;
+}
+
+async function targetRole(db: Db, id: string): Promise<Role> {
+  const [row] = await db.query<{ role: Role }>('select role from staff where id = $1', [id]);
+  if (!row) throw new Error('staff_not_found');
+  return row.role;
+}
+
 export async function createStaff(
   db: Db,
   actorId: string | null,
@@ -62,6 +77,7 @@ export async function createStaff(
 ): Promise<Staff> {
   const pinHash = await hashPin(input.pin);
   return db.transaction(async (tx) => {
+    if (!canAssignRole(await actorRole(tx, actorId), input.role)) throw new Error('forbidden_role');
     const [staff] = await tx.query<Staff>(
       `insert into staff (name, pin_hash, role, home_location_id) values ($1, $2, $3, $4)
        returning ${STAFF_COLUMNS}`,
@@ -80,26 +96,39 @@ export async function createStaff(
 
 export async function updateStaff(
   db: Db,
-  actorId: string,
+  actorId: string | null,
   input: { id: string; name: string; role: Role; homeLocationId: string | null; isActive: boolean },
 ): Promise<void> {
-  if (input.id === actorId && (input.role !== 'admin' || !input.isActive)) throw new Error('cannot_demote_self');
   await db.transaction(async (tx) => {
     await tx.query(`select pg_advisory_xact_lock(hashtextextended('admin-guard', 0))`);
 
-    const willBeActiveAdmin = input.role === 'admin' && input.isActive;
-    if (!willBeActiveAdmin) {
-      const [current] = await tx.query<{ role: Role; isActive: boolean }>(
-        `select role, is_active as "isActive" from staff where id = $1`,
-        [input.id],
+    const actor = await actorRole(tx, actorId);
+    const [current] = await tx.query<{ role: Role; isActive: boolean }>(
+      `select role, is_active as "isActive" from staff where id = $1`,
+      [input.id],
+    );
+    if (!current) throw new Error('staff_not_found');
+    const isSelf = input.id === actorId;
+    if (isSelf && (input.role !== current.role || !input.isActive)) throw new Error('cannot_demote_self');
+    if (!canEditStaff(actor, current.role, isSelf)) throw new Error('forbidden_target');
+    if (input.role !== current.role && !(canAssignRole(actor, current.role) && canAssignRole(actor, input.role))) {
+      throw new Error('forbidden_role');
+    }
+
+    // Keep at least one active admin-or-master, and at least one active master once there is one.
+    const stays = (pred: (r: Role) => boolean) => input.isActive && pred(input.role);
+    const othersExist = async (roles: Role[]) => {
+      const [{ exists }] = await tx.query<{ exists: boolean }>(
+        `select exists(select 1 from staff where role = any($2::text[]) and is_active and id <> $1) as exists`,
+        [input.id, roles],
       );
-      if (current?.role === 'admin' && current.isActive) {
-        const [{ exists: hasOtherAdmin }] = await tx.query<{ exists: boolean }>(
-          `select exists(select 1 from staff where role = 'admin' and is_active and id <> $1) as exists`,
-          [input.id],
-        );
-        if (!hasOtherAdmin) throw new Error('last_admin');
-      }
+      return exists;
+    };
+    if (current.isActive && isAdminRole(current.role) && !stays(isAdminRole) && !(await othersExist(['admin', 'master']))) {
+      throw new Error('last_admin');
+    }
+    if (current.isActive && current.role === 'master' && !stays((r) => r === 'master') && !(await othersExist(['master']))) {
+      throw new Error('last_master');
     }
 
     const rows = await tx.query(
@@ -118,9 +147,15 @@ export async function updateStaff(
   });
 }
 
-export async function resetPin(db: Db, actorId: string, id: string, pin: string): Promise<void> {
+export async function resetPin(db: Db, actorId: string | null, id: string, pin: string): Promise<void> {
   const pinHash = await hashPin(pin);
   await db.transaction(async (tx) => {
+    const actor = await actorRole(tx, actorId);
+    const target = await targetRole(tx, id);
+    // A developer script (actorId null) may reset anyone, including a master who forgot their PIN.
+    if (actorId !== null && !canResetPin(actor, target)) {
+      throw new Error(target === 'master' ? 'cannot_reset_master' : 'forbidden_target');
+    }
     const rows = await tx.query<{ id: string; name: string }>(
       `update staff set pin_hash = $2, failed_pin_attempts = 0, locked_until = null, updated_at = now()
         where id = $1 returning id, name`,
@@ -140,6 +175,10 @@ export async function resetPin(db: Db, actorId: string, id: string, pin: string)
 
 export async function unlockStaff(db: Db, actorId: string, id: string): Promise<void> {
   await db.transaction(async (tx) => {
+    // Unlocking lets someone keep guessing the PIN, so it follows the same rule as editing.
+    if (!canEditStaff(await actorRole(tx, actorId), await targetRole(tx, id), id === actorId)) {
+      throw new Error('forbidden_target');
+    }
     const rows = await tx.query<{ id: string; name: string }>(
       'update staff set failed_pin_attempts = 0, locked_until = null where id = $1 returning id, name',
       [id],

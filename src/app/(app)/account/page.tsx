@@ -1,7 +1,6 @@
 import { requireStaff } from '@/lib/auth/current';
 import { ChangePinForm } from './ChangePinForm';
-
-const ROLE_LABELS = { admin: '管理者', staff: 'スタッフ' } as const;
+import { ROLE_LABELS } from '@/lib/permissions';
 
 export default async function AccountPage() {
   const staff = await requireStaff();
