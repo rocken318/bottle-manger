@@ -20,7 +20,7 @@ export async function locationIdByName(db: Db, name: string): Promise<string> {
 }
 
 /** Inserts a staff row with a dummy PIN hash (use createStaff when a real PIN is needed). */
-export async function insertStaff(db: Db, name = 'テスト', role: 'admin' | 'staff' = 'staff'): Promise<string> {
+export async function insertStaff(db: Db, name = 'テスト', role: 'master' | 'admin' | 'staff' = 'staff'): Promise<string> {
   const rows = await db.query<{ id: string }>(
     `insert into staff (name, pin_hash, role) values ($1, 'x', $2) returning id`,
     [name, role],

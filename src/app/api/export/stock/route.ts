@@ -4,11 +4,12 @@ import { getDb } from '@/lib/db/client';
 import { listDrinks } from '@/lib/repo/drinks';
 import { listLocations } from '@/lib/repo/locations';
 import { getStockLevels } from '@/lib/repo/stock';
+import { isAdminRole } from '@/lib/permissions';
 
 export async function GET() {
   const staff = await getCurrentStaff();
   if (!staff) return new Response('Unauthorized', { status: 401 });
-  if (staff.role !== 'admin') return new Response('Forbidden', { status: 403 });
+  if (!isAdminRole(staff.role)) return new Response('Forbidden', { status: 403 });
   const db = getDb();
   const [locations, drinks, levels] = await Promise.all([
     listLocations(db, { includeInactive: true }),

@@ -12,7 +12,7 @@ const quantity = z
 const name = z.string().trim().min(1, '名前を入力してください').max(50, '名前は50文字以内にしてください');
 
 export const pinSchema = z.string().regex(/^\d{4,6}$/, 'PINは4〜6桁の数字にしてください');
-export const roleSchema = z.enum(['admin', 'staff']);
+export const roleSchema = z.enum(['master', 'admin', 'staff']);
 export const idSchema = uuid;
 
 // The units per case the client used to turn cases into bottles; the server rejects the batch

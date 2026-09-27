@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'staff';
+export type Role = 'master' | 'admin' | 'staff';
 export type MovementType = 'receive' | 'sale' | 'transfer' | 'adjust';
 
 export interface Location {

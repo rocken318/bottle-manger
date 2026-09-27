@@ -273,3 +273,33 @@ test('costs: prices, monthly report, variance, settings and CSV', async ({ page 
   await expect(page.getByText(/原価の設定変更：消費税率 10% → 8%/)).toBeVisible();
   await expect(page.getByText(/卸価格削除：お茶/)).toBeVisible();
 });
+
+test('master role: only the master manages admins', async ({ page }) => {
+  // 管理者 is seeded as the master; 花子 (staff, PIN 2468) exists from earlier tests.
+  await login(page, '管理者', '1234');
+  await page.getByRole('link', { name: '管理', exact: true }).click();
+  await page.getByRole('link', { name: 'スタッフ管理' }).click();
+  await expect(page.getByRole('link', { name: /管理者\s*マスター/ })).toBeVisible();
+  await page.getByLabel('名前').fill('次郎');
+  await page.getByLabel('PIN').fill('1357');
+  await page.getByLabel('権限').selectOption({ label: '管理者' });
+  await page.getByRole('button', { name: '登録', exact: true }).click();
+  await expect(page.getByText('次郎 を登録しました')).toBeVisible();
+  await page.getByRole('button', { name: 'ログアウト' }).click();
+
+  // 次郎 (admin) cannot touch the master or hand out the admin role…
+  await login(page, '次郎', '1357');
+  await page.getByRole('link', { name: '管理', exact: true }).click();
+  await page.getByRole('link', { name: 'スタッフ管理' }).click();
+  await expect(page.getByLabel('権限').locator('option')).toHaveText(['スタッフ']);
+  await page.getByRole('link', { name: /管理者\s*マスター/ }).click();
+  await expect(page.getByText('管理者・マスターの情報やPINを変更できるのはマスターだけです。')).toBeVisible();
+  await expect(page.getByLabel('新しいPIN')).toHaveCount(0);
+
+  // …but can still reset a staff member's PIN.
+  await page.getByRole('link', { name: '← スタッフ一覧' }).click();
+  await page.getByRole('link', { name: /花子/ }).click();
+  await page.getByLabel('新しいPIN').fill('2468');
+  await page.getByRole('button', { name: 'PINを変更' }).click();
+  await expect(page.getByText('PINを変更し、ロックを解除しました')).toBeVisible();
+});

@@ -13,6 +13,7 @@ import {
   updateStaff,
 } from '@/lib/repo/staff';
 import { verifyPin } from '@/lib/auth/pin';
+import type { Role } from '@/lib/types';
 import { createTestDb, locationIdByName } from '../helpers/testDb';
 
 let db: Db;
@@ -71,37 +72,93 @@ describe('staff repository', () => {
     expect(logs[0]).toMatchObject({ action: 'staff.reset_pin', targetId: s.id, details: { name: '花子' } });
   });
 
-  it('prevents demoting the last remaining active admin', async () => {
-    const staffMember = await createStaff(db, adminId, {
-      name: '花子',
-      pin: '5678',
-      role: 'staff',
-      homeLocationId: null,
-    });
+  it('prevents removing the last remaining active admin or master', async () => {
+    // A developer script (null actor) is allowed to change roles, so only the guards stop it.
     await expect(
-      updateStaff(db, staffMember.id, {
-        id: adminId,
-        name: '管理者',
-        role: 'staff',
-        homeLocationId: null,
-        isActive: true,
-      }),
+      updateStaff(db, null, { id: adminId, name: '管理者', role: 'staff', homeLocationId: null, isActive: true }),
     ).rejects.toThrow('last_admin');
     await expect(
-      updateStaff(db, staffMember.id, {
-        id: adminId,
-        name: '管理者',
-        role: 'admin',
-        homeLocationId: null,
-        isActive: false,
-      }),
+      updateStaff(db, null, { id: adminId, name: '管理者', role: 'admin', homeLocationId: null, isActive: false }),
     ).rejects.toThrow('last_admin');
   });
 
   it('allows demoting an admin when another active admin remains', async () => {
-    const b = await createStaff(db, adminId, { name: 'B', pin: '2222', role: 'admin', homeLocationId: null });
-    await updateStaff(db, adminId, { id: b.id, name: 'B', role: 'staff', homeLocationId: null, isActive: true });
+    const master = await createStaff(db, null, { name: 'M', pin: '3333', role: 'master', homeLocationId: null });
+    const b = await createStaff(db, master.id, { name: 'B', pin: '2222', role: 'admin', homeLocationId: null });
+    await updateStaff(db, master.id, { id: b.id, name: 'B', role: 'staff', homeLocationId: null, isActive: true });
     expect((await getStaffById(db, b.id))?.role).toBe('staff');
+  });
+
+  describe('master role', () => {
+    let masterId: string;
+    let staffId: string;
+    const edit = (actor: string | null, id: string, name: string, role: Role, isActive = true) =>
+      updateStaff(db, actor, { id, name, role, homeLocationId: null, isActive });
+
+    beforeEach(async () => {
+      masterId = (await createStaff(db, null, { name: 'マスター', pin: '1111', role: 'master', homeLocationId: null })).id;
+      staffId = (await createStaff(db, adminId, { name: '花子', pin: '5678', role: 'staff', homeLocationId: null })).id;
+    });
+
+    it('lets only a master create admins and masters', async () => {
+      await expect(
+        createStaff(db, adminId, { name: 'B', pin: '2222', role: 'admin', homeLocationId: null }),
+      ).rejects.toThrow('forbidden_role');
+      await expect(
+        createStaff(db, adminId, { name: 'B', pin: '2222', role: 'master', homeLocationId: null }),
+      ).rejects.toThrow('forbidden_role');
+      const b = await createStaff(db, masterId, { name: 'B', pin: '2222', role: 'admin', homeLocationId: null });
+      expect(b.role).toBe('admin');
+    });
+
+    it('lets an admin edit staff but not promote them or touch other admins', async () => {
+      await edit(adminId, staffId, '花子2', 'staff');
+      await expect(edit(adminId, staffId, '花子2', 'admin')).rejects.toThrow('forbidden_role');
+      const other = await createStaff(db, masterId, { name: 'B', pin: '2222', role: 'admin', homeLocationId: null });
+      await expect(edit(adminId, other.id, 'B', 'staff')).rejects.toThrow('forbidden_target');
+      await expect(edit(adminId, other.id, 'B2', 'admin')).rejects.toThrow('forbidden_target');
+      await expect(edit(adminId, masterId, 'マスター', 'master', false)).rejects.toThrow('forbidden_target');
+      // Editing yourself (name only) is still fine.
+      await edit(adminId, adminId, '管理者2', 'admin');
+    });
+
+    it('lets a master promote and demote admins', async () => {
+      await edit(masterId, staffId, '花子', 'admin');
+      expect((await getStaffById(db, staffId))?.role).toBe('admin');
+      await edit(masterId, adminId, '管理者', 'staff');
+      expect((await getStaffById(db, adminId))?.role).toBe('staff');
+    });
+
+    it('does not let a master change their own role', async () => {
+      await expect(edit(masterId, masterId, 'マスター', 'admin')).rejects.toThrow('cannot_demote_self');
+    });
+
+    it('keeps at least one active master', async () => {
+      await expect(edit(null, masterId, 'マスター', 'admin')).rejects.toThrow('last_master');
+      const m2 = await createStaff(db, masterId, { name: 'M2', pin: '4444', role: 'master', homeLocationId: null });
+      await edit(m2.id, masterId, 'マスター', 'admin');
+      expect((await getStaffById(db, masterId))?.role).toBe('admin');
+    });
+
+    it('limits whose PIN can be reset', async () => {
+      await resetPin(db, adminId, staffId, '9999');
+      const other = await createStaff(db, masterId, { name: 'B', pin: '2222', role: 'admin', homeLocationId: null });
+      await expect(resetPin(db, adminId, other.id, '9999')).rejects.toThrow('forbidden_target');
+      await expect(resetPin(db, adminId, masterId, '9999')).rejects.toThrow('cannot_reset_master');
+      await resetPin(db, masterId, other.id, '9999');
+      const m2 = await createStaff(db, masterId, { name: 'M2', pin: '4444', role: 'master', homeLocationId: null });
+      await expect(resetPin(db, masterId, m2.id, '9999')).rejects.toThrow('cannot_reset_master');
+      // The developer script (null actor) can reset a master who forgot their PIN.
+      await resetPin(db, null, m2.id, '8888');
+      const [row] = await db.query<{ pin_hash: string }>('select pin_hash from staff where id = $1', [m2.id]);
+      expect(await verifyPin('8888', row.pin_hash)).toBe(true);
+    });
+
+    it('does not let an admin unlock a master (that would allow endless PIN guessing)', async () => {
+      await db.query(`update staff set locked_until = now() + interval '1 hour' where id = $1`, [masterId]);
+      await expect(unlockStaff(db, adminId, masterId)).rejects.toThrow('forbidden_target');
+      await unlockStaff(db, adminId, staffId);
+    });
   });
 
   it('locks a staff member only if not already locked', async () => {
