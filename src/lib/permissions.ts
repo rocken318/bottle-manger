@@ -33,7 +33,7 @@ export function canEditStaff(actor: Role, target: Role, isSelf: boolean): boolea
 /**
  * Setting someone else's PIN: admins only for staff, masters for staff and admins. Nobody can set a
  * master's PIN from the admin screen (the master changes it on the account page; if forgotten, the
- * developer runs `npm run db:reset-pin`), so that a master account cannot be taken over from the app.
+ * developer runs `npm run db:staff -- pin`), so that a master account cannot be taken over from the app.
  */
 export function canResetPin(actor: Role, target: Role): boolean {
   if (target === 'master') return false;

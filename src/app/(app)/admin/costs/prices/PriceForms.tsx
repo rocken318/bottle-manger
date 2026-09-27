@@ -1,8 +1,9 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { initialFormState } from '@/lib/formState';
 import { deletePriceAction, savePriceAction } from '../actions';
+import { submitWithoutReset } from '@/lib/submitWithoutReset';
 
 export function PriceCreateForm({
   drinks,
@@ -14,10 +15,15 @@ export function PriceCreateForm({
   const [state, formAction, pending] = useActionState(savePriceAction, initialFormState);
   const [drinkId, setDrinkId] = useState(drinks[0]?.id ?? '');
   const [mode, setMode] = useState<'unit' | 'case'>('unit');
+  const [amount, setAmount] = useState('');
   const drink = drinks.find((d) => d.id === drinkId);
 
+  useEffect(() => {
+    if (state.message) setAmount('');
+  }, [state]);
+
   return (
-    <form action={formAction} className="space-y-3 rounded border bg-white p-4">
+    <form onSubmit={submitWithoutReset(formAction)} className="space-y-3 rounded border bg-white p-4">
       <h2 className="font-bold">卸価格を登録</h2>
       <label className="block">
         <span className="mb-1 block text-sm">ボトル</span>
@@ -58,7 +64,14 @@ export function PriceCreateForm({
       </fieldset>
       <label className="block">
         <span className="mb-1 block text-sm">{mode === 'unit' ? '1本の卸価格（税抜・円）' : '1ケースの卸価格（税抜・円）'}</span>
-        <input name="amount" inputMode="decimal" required className="w-full rounded border px-3 py-2" />
+        <input
+          name="amount"
+          inputMode="decimal"
+          required
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          className="w-full rounded border px-3 py-2"
+        />
       </label>
       {mode === 'case' && (
         <p className="text-xs text-gray-600">1ケースの本数で割り、小数第2位まで（四捨五入）の1本単価で保存します。</p>
@@ -88,9 +101,9 @@ export function PriceDeleteButton({ id, label }: { id: string; label: string }) 
   const [state, formAction, pending] = useActionState(deletePriceAction, initialFormState);
   return (
     <form
-      action={formAction}
       onSubmit={(e) => {
-        if (!window.confirm(`${label} を削除しますか？`)) e.preventDefault();
+        if (window.confirm(`${label} を削除しますか？`)) submitWithoutReset(formAction)(e);
+        else e.preventDefault();
       }}
       className="inline"
     >

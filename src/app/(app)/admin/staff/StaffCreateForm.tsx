@@ -5,6 +5,7 @@ import { initialFormState } from '@/lib/formState';
 import { canAssignRole, ROLE_LABELS } from '@/lib/permissions';
 import type { Location, Role } from '@/lib/types';
 import { createStaffAction } from './actions';
+import { submitWithoutReset } from '@/lib/submitWithoutReset';
 
 const ROLES: Role[] = ['staff', 'admin', 'master'];
 
@@ -25,7 +26,7 @@ export function StaffCreateForm({ locations, viewerRole }: { locations: Location
   }, [state]);
 
   return (
-    <form action={formAction} className="space-y-3 rounded border bg-white p-4">
+    <form onSubmit={submitWithoutReset(formAction)} className="space-y-3 rounded border bg-white p-4">
       <h2 className="font-bold">スタッフを登録</h2>
       <div className="grid grid-cols-2 gap-3">
         <label>

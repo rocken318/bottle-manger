@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from 'react';
 import { initialFormState } from '@/lib/formState';
 import { createDrinkAction } from './actions';
+import { submitWithoutReset } from '@/lib/submitWithoutReset';
 
 export function DrinkCreateForm() {
   const [state, formAction, pending] = useActionState(createDrinkAction, initialFormState);
@@ -17,7 +18,7 @@ export function DrinkCreateForm() {
   }, [state]);
 
   return (
-    <form action={formAction} className="space-y-3 rounded border bg-white p-4">
+    <form onSubmit={submitWithoutReset(formAction)} className="space-y-3 rounded border bg-white p-4">
       <h2 className="font-bold">ボトルを登録</h2>
       <div className="flex flex-wrap gap-3">
         <label className="flex-1">

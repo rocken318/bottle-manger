@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from 'react';
 import { initialFormState } from '@/lib/formState';
 import type { Location } from '@/lib/types';
 import { createLocationAction, updateLocationAction } from './actions';
+import { submitWithoutReset } from '@/lib/submitWithoutReset';
 
 export function LocationCreateForm({ nextSortOrder }: { nextSortOrder: number }) {
   const [state, formAction, pending] = useActionState(createLocationAction, initialFormState);
@@ -20,7 +21,7 @@ export function LocationCreateForm({ nextSortOrder }: { nextSortOrder: number })
   }, [state]);
 
   return (
-    <form action={formAction} className="space-y-3 rounded border bg-white p-4">
+    <form onSubmit={submitWithoutReset(formAction)} className="space-y-3 rounded border bg-white p-4">
       <h2 className="font-bold">拠点を追加</h2>
       <div className="flex gap-3">
         <label className="flex-1">
@@ -70,7 +71,7 @@ export function LocationEditForm({ location }: { location: Location }) {
   const [isActive, setIsActive] = useState(location.isActive);
 
   return (
-    <form action={formAction} className="flex flex-wrap items-end gap-2 px-3 py-3">
+    <form onSubmit={submitWithoutReset(formAction)} className="flex flex-wrap items-end gap-2 px-3 py-3">
       <input type="hidden" name="id" value={location.id} />
       <label className="flex-1">
         <span className="block text-xs text-gray-500">拠点名</span>

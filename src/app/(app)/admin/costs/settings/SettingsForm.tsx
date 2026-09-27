@@ -4,11 +4,12 @@ import { useActionState } from 'react';
 import { initialFormState } from '@/lib/formState';
 import type { CostSettings } from '@/lib/repo/settings';
 import { saveCostSettingsAction } from '../actions';
+import { submitWithoutReset } from '@/lib/submitWithoutReset';
 
 export function CostSettingsForm({ settings }: { settings: CostSettings }) {
   const [state, formAction, pending] = useActionState(saveCostSettingsAction, initialFormState);
   return (
-    <form action={formAction} className="space-y-3 rounded border bg-white p-4">
+    <form onSubmit={submitWithoutReset(formAction)} className="space-y-3 rounded border bg-white p-4">
       <label className="block">
         <span className="mb-1 block text-sm">消費税率（%）</span>
         <input
