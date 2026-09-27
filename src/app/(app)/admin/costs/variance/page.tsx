@@ -93,9 +93,9 @@ export default async function CostsVariancePage({
               <thead className="bg-gray-50 text-xs text-gray-600">
                 <tr>
                   <th scope="col" className="px-2 py-2 text-left">ボトル</th>
-                  <th scope="col" className="px-2 py-2 text-right">棚卸回数</th>
-                  <th scope="col" className="px-2 py-2 text-right">差異本数</th>
                   <th scope="col" className="px-2 py-2 text-right">差異金額</th>
+                  <th scope="col" className="px-2 py-2 text-right">差異本数</th>
+                  <th scope="col" className="px-2 py-2 text-right">棚卸回数</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -104,14 +104,16 @@ export default async function CostsVariancePage({
                     <th scope="row" className="whitespace-nowrap px-2 py-2 text-left font-normal">
                       {r.drinkName}
                     </th>
-                    <td className="px-2 py-2 text-right tabular-nums">{r.count}</td>
-                    <td className={numClass(r.diffQty)}>{signed(r.diffQty)}</td>
-                    <td className={numClass(r.amountYen)}>
+                    <td className={`${numClass(r.amountYen)} font-bold`}>
                       {signed(r.amountYen)}
                       {r.missingCount > 0 && (
-                        <span className="ml-1 rounded bg-amber-100 px-1 text-xs text-amber-900">価格未設定{r.missingCount}件</span>
+                        <span className="ml-1 rounded bg-amber-100 px-1 text-xs font-normal text-amber-900">
+                          価格未設定{r.missingCount}件
+                        </span>
                       )}
                     </td>
+                    <td className={numClass(r.diffQty)}>{signed(r.diffQty)}</td>
+                    <td className="px-2 py-2 text-right tabular-nums">{r.count}</td>
                   </tr>
                 ))}
               </tbody>
@@ -131,13 +133,13 @@ export default async function CostsVariancePage({
                 <tr>
                   <th scope="col" className="px-2 py-2 text-left">日時</th>
                   <th scope="col" className="px-2 py-2 text-left">拠点</th>
-                  <th scope="col" className="px-2 py-2 text-left">数えた人</th>
                   <th scope="col" className="px-2 py-2 text-left">ボトル</th>
+                  <th scope="col" className="px-2 py-2 text-right">差異金額</th>
+                  <th scope="col" className="px-2 py-2 text-right">差異本数</th>
                   <th scope="col" className="px-2 py-2 text-right">帳簿</th>
                   <th scope="col" className="px-2 py-2 text-right">実数</th>
-                  <th scope="col" className="px-2 py-2 text-right">差異本数</th>
                   <th scope="col" className="px-2 py-2 text-right">単価</th>
-                  <th scope="col" className="px-2 py-2 text-right">差異金額</th>
+                  <th scope="col" className="px-2 py-2 text-left">数えた人</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -145,28 +147,28 @@ export default async function CostsVariancePage({
                   <tr key={r.id} className={r.flagged ? 'bg-red-50' : ''} data-flagged={r.flagged || undefined}>
                     <td className="whitespace-nowrap px-2 py-2">{formatDateTime(r.createdAt)}</td>
                     <td className="whitespace-nowrap px-2 py-2">{r.locationName}</td>
-                    <td className="whitespace-nowrap px-2 py-2">{r.staffName}</td>
                     <td className="whitespace-nowrap px-2 py-2">
                       {r.flagged && <span className="mr-1 font-bold text-red-700">要確認</span>}
                       {r.drinkName}
                     </td>
-                    <td className="px-2 py-2 text-right tabular-nums">{r.bookQty}</td>
-                    <td className="px-2 py-2 text-right tabular-nums">{r.countedQty}</td>
-                    <td className={numClass(r.diffQty)}>{signed(r.diffQty)}</td>
-                    <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums">
-                      {r.unitCents === null ? '' : formatUnitPrice(r.unitCents)}
-                    </td>
-                    <td className={numClass(r.amountYen ?? 0)}>
+                    <td className={`${numClass(r.amountYen ?? 0)} font-bold`}>
                       {r.amountYen === null ? (
                         r.diffQty === 0 ? (
                           '0'
                         ) : (
-                          <span className="rounded bg-amber-100 px-1 text-xs text-amber-900">価格未設定</span>
+                          <span className="rounded bg-amber-100 px-1 text-xs font-normal text-amber-900">価格未設定</span>
                         )
                       ) : (
                         signed(r.amountYen)
                       )}
                     </td>
+                    <td className={numClass(r.diffQty)}>{signed(r.diffQty)}</td>
+                    <td className="px-2 py-2 text-right tabular-nums">{r.bookQty}</td>
+                    <td className="px-2 py-2 text-right tabular-nums">{r.countedQty}</td>
+                    <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums">
+                      {r.unitCents === null ? '' : formatUnitPrice(r.unitCents)}
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-2">{r.staffName}</td>
                   </tr>
                 ))}
               </tbody>
