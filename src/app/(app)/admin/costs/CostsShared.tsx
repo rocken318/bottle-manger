@@ -56,13 +56,13 @@ export function CostFilterForm({
       action={action}
       className="grid grid-cols-2 gap-2 rounded border bg-white p-3 text-sm sm:grid-cols-4"
     >
-      <label>
+      <label className="min-w-0">
         <span className="mb-1 block text-xs text-gray-600">開始月</span>
-        <input type="month" name="from" defaultValue={filter.fromMonth} required className="w-full rounded border px-2 py-2" />
+        <input type="month" name="from" defaultValue={filter.fromMonth} required className="block w-full min-w-0 rounded border px-2 py-2" />
       </label>
-      <label>
+      <label className="min-w-0">
         <span className="mb-1 block text-xs text-gray-600">終了月</span>
-        <input type="month" name="to" defaultValue={filter.toMonth} required className="w-full rounded border px-2 py-2" />
+        <input type="month" name="to" defaultValue={filter.toMonth} required className="block w-full min-w-0 rounded border px-2 py-2" />
       </label>
       <label className="col-span-2 sm:col-span-1">
         <span className="mb-1 block text-xs text-gray-600">拠点</span>
