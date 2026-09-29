@@ -12,7 +12,9 @@
     "test:e2e": "playwright test",
     "db:migrate": "tsx --env-file=.env.local scripts/migrate.ts",
     "db:create-admin": "tsx --env-file=.env.local scripts/create-admin.ts",
-    "db:staff": "tsx --env-file=.env.local scripts/staff.ts"
+    "db:staff": "tsx --env-file=.env.local scripts/staff.ts",
+    "db:import-drinks": "tsx --env-file=.env.local scripts/import-drinks.ts",
+    "db:assign-categories": "tsx --env-file=.env.local scripts/assign-categories.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -36,5 +38,8 @@
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "vitest": "^5.0.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
   }
 }

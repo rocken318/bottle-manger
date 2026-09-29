@@ -10,6 +10,8 @@ const drink = (id: string, name: string, unitsPerCase = 24): Drink => ({
   unitsPerCase,
   isActive: true,
   createdAt: new Date(0),
+  categoryId: null,
+  categoryName: null,
 });
 const cola = drink('c0000000-0000-4000-8000-000000000001', 'コーラ');
 const beer = drink('c0000000-0000-4000-8000-000000000002', 'ビール', 12);

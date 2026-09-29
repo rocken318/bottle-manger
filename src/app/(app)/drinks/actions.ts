@@ -6,8 +6,9 @@ import { requireAdmin, requireStaff } from '@/lib/auth/current';
 import { getDb } from '@/lib/db/client';
 import { toUserMessage } from '@/lib/errors';
 import type { FormState } from '@/lib/formState';
+import { setDrinkCategory } from '@/lib/repo/categories';
 import { createDrink, setDrinkActive, updateDrink } from '@/lib/repo/drinks';
-import { drinkCreateSchema, drinkUpdateSchema, idSchema } from '@/lib/validation';
+import { drinkCategorySchema, drinkCreateSchema, drinkUpdateSchema, idSchema } from '@/lib/validation';
 
 export async function createDrinkAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const staff = await requireStaff();
@@ -16,13 +17,32 @@ export async function createDrinkAction(_prev: FormState, formData: FormData): P
     unitsPerCase: formData.get('unitsPerCase'),
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const category = drinkCategorySchema.shape.categoryId.safeParse(formData.get('categoryId') ?? '');
+  if (!category.success) return { error: '種類の選択が正しくありません' };
   try {
-    await createDrink(getDb(), staff.id, parsed.data);
+    await createDrink(getDb(), staff.id, { ...parsed.data, categoryId: category.data });
   } catch (e) {
     return { error: toUserMessage(e) };
   }
   revalidatePath('/', 'layout');
   return { message: `${parsed.data.name} を登録しました` };
+}
+
+/** 一覧のプルダウンから、その場で種類を付け替える（スタッフ可）。 */
+export async function setDrinkCategoryAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const staff = await requireStaff();
+  const parsed = drinkCategorySchema.safeParse({
+    drinkId: formData.get('drinkId'),
+    categoryId: formData.get('categoryId') ?? '',
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  try {
+    await setDrinkCategory(getDb(), staff.id, parsed.data.drinkId, parsed.data.categoryId);
+  } catch (e) {
+    return { error: toUserMessage(e) };
+  }
+  revalidatePath('/', 'layout');
+  return { message: '種類を変えました' };
 }
 
 export async function updateDrinkAction(_prev: FormState, formData: FormData): Promise<FormState> {

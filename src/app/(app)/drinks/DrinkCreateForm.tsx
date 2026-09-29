@@ -2,18 +2,21 @@
 
 import { useActionState, useEffect, useState } from 'react';
 import { initialFormState } from '@/lib/formState';
+import type { Category } from '@/lib/types';
 import { createDrinkAction } from './actions';
 import { submitWithoutReset } from '@/lib/submitWithoutReset';
 
-export function DrinkCreateForm() {
+export function DrinkCreateForm({ categories }: { categories: Category[] }) {
   const [state, formAction, pending] = useActionState(createDrinkAction, initialFormState);
   const [name, setName] = useState('');
   const [unitsPerCase, setUnitsPerCase] = useState('24');
+  const [categoryId, setCategoryId] = useState('');
 
   useEffect(() => {
     if (state.message) {
       setName('');
       setUnitsPerCase('24');
+      setCategoryId('');
     }
   }, [state]);
 
@@ -44,6 +47,22 @@ export function DrinkCreateForm() {
             required
             className="w-full rounded border px-3 py-2"
           />
+        </label>
+        <label className="w-44">
+          <span className="mb-1 block text-sm">種類</span>
+          <select
+            name="categoryId"
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className="w-full rounded border bg-white px-3 py-2"
+          >
+            <option value="">未分類</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
       {state.error && (

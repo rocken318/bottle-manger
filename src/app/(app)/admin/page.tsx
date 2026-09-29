@@ -18,6 +18,11 @@ const ACTION_LABELS: Record<string, string> = {
   'staff.change_pin': '自分のPIN変更',
   'location.create': '拠点追加',
   'location.update': '拠点変更',
+  'category.create': '種類追加',
+  'category.update': '種類変更',
+  'drink.category': 'ボトルの種類変更',
+  'drink.import': 'ボトル一括取り込み',
+  'drink.delete': 'ボトル削除',
   'movement.void': '在庫記録の取り消し',
   'login.locked': 'PIN誤りでロック',
   'price.create': '卸価格登録',
@@ -36,6 +41,7 @@ export default async function AdminPage() {
           <li>この画面は管理者・マスターだけが使えます。</li>
           <li>「スタッフ管理」：スタッフの登録、権限・所属拠点の変更、PINの再設定、ロック解除をします。</li>
           <li>「拠点管理」：拠点（お店や倉庫）の追加、名前・表示順の変更、無効化をします。</li>
+          <li>「お酒の種類」：焼酎・ウイスキーなどの種類を追加・改名・無効化します。どのボトルがどの種類かは「ボトル」の画面で変えます。</li>
           <li>「原価・棚卸差異」：月ごとの原価やロス（棚卸差異）を金額で確認します。卸価格の登録もここでします。</li>
           <li>「在庫一覧をCSV出力」を押すと、今の在庫をファイルでダウンロードできます（Excelなどで開けます）。</li>
           <li>「操作ログ」には、だれがいつ何をしたか（登録・変更・取り消し・ロックなど）が新しい順に100件表示されます。</li>
@@ -48,7 +54,10 @@ export default async function AdminPage() {
         <Link href="/admin/locations" className="rounded border bg-white p-4 text-center font-bold">
           拠点管理
         </Link>
-        <Link href="/admin/costs" className="col-span-2 rounded border bg-white p-4 text-center font-bold">
+        <Link href="/admin/categories" className="rounded border bg-white p-4 text-center font-bold">
+          お酒の種類
+        </Link>
+        <Link href="/admin/costs" className="rounded border bg-white p-4 text-center font-bold">
           原価・棚卸差異
         </Link>
       </div>

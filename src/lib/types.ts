@@ -20,12 +20,23 @@ export interface Staff {
   lockedUntil: Date | null;
 }
 
+/** 酒の種類（焼酎・ウイスキー…）。管理画面から追加・改名・廃止できる。 */
+export interface Category {
+  id: string;
+  name: string;
+  sortOrder: number;
+  isActive: boolean;
+}
+
 export interface Drink {
   id: string;
   name: string;
   unitsPerCase: number;
   isActive: boolean;
   createdAt: Date;
+  /** null は「未分類」。カテゴリを廃止したボトルもここに落ちる。 */
+  categoryId: string | null;
+  categoryName: string | null;
 }
 
 export interface StockLevel {

@@ -2,14 +2,19 @@
 
 import { useActionState, useEffect, useState } from 'react';
 import { initialFormState } from '@/lib/formState';
-import type { Drink } from '@/lib/types';
+import type { Category, Drink } from '@/lib/types';
 import { updateDrinkAction } from './actions';
 import { DrinkActiveToggle } from './DrinkActiveToggle';
+import { DrinkCategorySelect } from './DrinkCategorySelect';
 import { submitWithoutReset } from '@/lib/submitWithoutReset';
 
-type Props = { drink: Pick<Drink, 'id' | 'name' | 'unitsPerCase' | 'isActive'>; isAdmin: boolean };
+type Props = {
+  drink: Pick<Drink, 'id' | 'name' | 'unitsPerCase' | 'isActive' | 'categoryId'>;
+  isAdmin: boolean;
+  categories: Category[];
+};
 
-export function DrinkRow({ drink, isAdmin }: Props) {
+export function DrinkRow({ drink, isAdmin, categories }: Props) {
   const [editing, setEditing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -21,6 +26,12 @@ export function DrinkRow({ drink, isAdmin }: Props) {
           <span className="ml-2 text-xs text-gray-500">1ケース{drink.unitsPerCase}本</span>
         </span>
         <div className="flex items-center gap-3">
+          <DrinkCategorySelect
+            drinkId={drink.id}
+            drinkName={drink.name}
+            categoryId={drink.categoryId}
+            categories={categories}
+          />
           {!editing && (
             <button
               type="button"

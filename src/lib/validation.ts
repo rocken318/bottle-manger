@@ -125,6 +125,25 @@ export const locationSchema = z.object({
 
 export const locationUpdateSchema = locationSchema.extend({ id: uuid, isActive: z.boolean() });
 
+// --- 酒の種類（カテゴリ）---
+
+export const categorySchema = z.object({
+  name,
+  sortOrder: z.coerce
+    .number()
+    .int('表示順は整数で入力してください')
+    .min(0, '表示順は0以上にしてください')
+    .max(999, '表示順は999以下にしてください'),
+});
+
+export const categoryUpdateSchema = categorySchema.extend({ id: uuid, isActive: z.boolean() });
+
+/** 空文字は「未分類」を意味する（select の既定値がそれ）。 */
+export const drinkCategorySchema = z.object({
+  drinkId: uuid,
+  categoryId: z.union([uuid, z.literal('')]).transform((v) => (v === '' ? null : v)),
+});
+
 // --- v1.2 原価・棚卸差異 ---
 
 /** Upper bound for a typed price (per bottle or per case), in yen. */
