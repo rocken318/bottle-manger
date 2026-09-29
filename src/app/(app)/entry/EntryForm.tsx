@@ -29,6 +29,8 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
     locations.find((l) => l.id !== defaultLocationId)?.id ?? '',
   );
   const [query, setQuery] = useState(initialQuery);
+  // 棚卸で数えるときなど、在庫が多いものから順に見たいことがある。
+  const [sortByStock, setSortByStock] = useState(false);
   // Keyed by drink id so values typed into rows survive filtering.
   const [quantities, setQuantities] = useState<Record<string, EntryQuantity>>({});
   const [note, setNote] = useState('');
@@ -37,8 +39,6 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
   const [photos, setPhotos] = useState<{ file: File; url: string }[]>([]);
   const [batchId, setBatchId] = useState(() => crypto.randomUUID());
   const [warnings, setWarnings] = useState<string[] | null>(null);
-  // Names of filled rows hidden by the search filter, shown for confirmation before submitting.
-  const [hiddenConfirm, setHiddenConfirm] = useState<string[] | null>(null);
   // Tab the user wants to switch to while rows are filled (asks before clearing them).
   const [pendingType, setPendingType] = useState<MovementType | null>(null);
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
@@ -52,7 +52,15 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
   const stockOf = (loc: string, drink: string) => stock.get(`${loc}:${drink}`) ?? 0;
 
   const transferUnavailable = type === 'transfer' && locations.length < 2;
-  const visible = useMemo(() => drinks.filter((d) => matchesSearch(d.name, query)), [drinks, query]);
+  const visible = useMemo(() => {
+    const filtered = drinks.filter((d) => matchesSearch(d.name, query));
+    if (!sortByStock) return filtered;
+    // 選んでいる拠点（移動のときは移動元）の在庫が多い順。同数なら元の並びのまま。
+    return filtered
+      .map((drink, index) => ({ drink, index, stock: stock.get(`${locationId}:${drink.id}`) ?? 0 }))
+      .sort((a, b) => b.stock - a.stock || a.index - b.index)
+      .map((x) => x.drink);
+  }, [drinks, query, sortByStock, stock, locationId]);
   const filled = useMemo(() => drinks.filter((d) => isFilled(quantities[d.id])), [drinks, quantities]);
   const hiddenFilled = useMemo(() => {
     const shown = new Set(visible.map((d) => d.id));
@@ -75,14 +83,12 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
 
   const resetFeedback = () => {
     setWarnings(null);
-    setHiddenConfirm(null);
     setMessage(null);
   };
   const changeQuery = (next: string) => {
     setQuery(next);
-    // What is hidden changes with the filter, so any pending confirmation is stale.
+    // What would go negative changes with the filter, so any pending warning is stale.
     setWarnings(null);
-    setHiddenConfirm(null);
   };
   const clearPhotos = () => {
     for (const p of photos) URL.revokeObjectURL(p.url);
@@ -137,7 +143,9 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
     setQuantities((prev) => ({ ...prev, [drinkId]: { ...(prev[drinkId] ?? EMPTY), ...patch } }));
   };
 
-  function submit(confirmNegative: boolean, confirmHidden: boolean) {
+  // 絞り込みで隠れている行も、確認なしでそのまま登録する。
+  // 何件隠れているかは操作バーのカウンタに出ている。
+  function submit(confirmNegative: boolean) {
     if (transferUnavailable) {
       setMessage({ kind: 'error', text: '移動先の拠点がありません' });
       return;
@@ -147,12 +155,6 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
       setMessage({ kind: 'error', text: built.error });
       return;
     }
-    if (!confirmHidden && hiddenFilled.length > 0) {
-      setMessage(null);
-      setHiddenConfirm(hiddenFilled.map((d) => d.name));
-      return;
-    }
-    setHiddenConfirm(null);
     const typeLabel = MOVEMENT_TYPE_LABELS[type];
     startTransition(async () => {
       try {
@@ -323,15 +325,25 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
             </label>
           )}
 
-          <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               type="search"
               value={query}
               onChange={(e) => changeQuery(e.target.value)}
               placeholder="ボトル名で絞り込み"
               aria-label="絞り込み"
-              className="w-full rounded border bg-white px-3 py-2"
+              className="min-w-0 flex-1 rounded border bg-white px-3 py-2"
             />
+            <button
+              type="button"
+              onClick={() => setSortByStock((v) => !v)}
+              aria-pressed={sortByStock}
+              className={`shrink-0 rounded border px-3 py-2 text-sm ${
+                sortByStock ? 'border-blue-600 bg-blue-600 text-white' : 'bg-white'
+              }`}
+            >
+              {sortByStock ? '在庫の多い順' : '登録順'}
+            </button>
           </div>
 
           {visible.length === 0 ? (
@@ -459,24 +471,6 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
         </>
       )}
 
-      {hiddenConfirm && (
-        <div className="space-y-2 rounded border border-yellow-400 bg-yellow-50 p-3 text-sm">
-          <p className="font-bold">絞り込みで表示されていない入力があります。これも登録しますか？</p>
-          <ul className="list-disc pl-5">
-            {hiddenConfirm.map((name) => (
-              <li key={name}>{name}</li>
-            ))}
-          </ul>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => submit(false, true)}
-            className="rounded bg-yellow-500 px-4 py-2 font-bold text-white disabled:opacity-50"
-          >
-            非表示の分も含めて登録する
-          </button>
-        </div>
-      )}
       {warnings && (
         <div className="space-y-2 rounded border border-yellow-400 bg-yellow-50 p-3 text-sm">
           <p className="font-bold">在庫がマイナスになります。登録してよいですか？</p>
@@ -488,8 +482,7 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
           <button
             type="button"
             disabled={pending}
-            // Hidden rows (if any) were already confirmed before the negative-stock check.
-            onClick={() => submit(true, true)}
+            onClick={() => submit(true)}
             className="rounded bg-yellow-500 px-4 py-2 font-bold text-white disabled:opacity-50"
           >
             マイナスでも登録する
@@ -515,7 +508,7 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
         <button
           type="button"
           disabled={pending || transferUnavailable}
-          onClick={() => submit(false, false)}
+          onClick={() => submit(false)}
           className="shrink-0 rounded bg-blue-600 px-6 py-2 font-bold text-white disabled:opacity-50"
         >
           登録する

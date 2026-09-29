@@ -144,14 +144,12 @@ test('bulk entry: several drinks, hidden rows, tab switch and a zero stocktake',
   await expect(page.getByText('入荷 2件登録しました')).toBeVisible();
   await expect(page.getByLabel('お茶のケース')).toHaveValue('');
 
-  // A filled row hidden by the filter is only submitted after confirmation
+  // A filled row hidden by the filter is submitted as-is; the counter says how many are hidden
   await page.getByLabel('お茶の本').fill('3');
   await page.getByLabel('絞り込み').fill('コーラ');
   await expect(page.getByLabel('お茶の本')).toHaveCount(0);
   await expect(page.getByText('入力中 1件（うち 1件は絞り込みで非表示）')).toBeVisible();
   await page.getByRole('button', { name: '登録する' }).click();
-  await expect(page.getByRole('listitem').filter({ hasText: 'お茶' })).toBeVisible();
-  await page.getByRole('button', { name: '非表示の分も含めて登録する' }).click();
   await expect(page.getByText('入荷 1件登録しました')).toBeVisible();
   await page.getByLabel('絞り込み').fill('');
 

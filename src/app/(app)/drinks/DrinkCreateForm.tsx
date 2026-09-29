@@ -23,18 +23,19 @@ export function DrinkCreateForm({ categories }: { categories: Category[] }) {
   return (
     <form onSubmit={submitWithoutReset(formAction)} className="space-y-3 rounded border bg-white p-4">
       <h2 className="font-bold">ボトルを登録</h2>
+      {/* ボトル名は横並びにすると幅が潰れて打ちにくいので、1 行まるごと使う。 */}
+      <label className="block">
+        <span className="mb-1 block text-sm">ボトル名</span>
+        <input
+          name="name"
+          required
+          maxLength={50}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full rounded border px-3 py-2"
+        />
+      </label>
       <div className="flex flex-wrap gap-3">
-        <label className="flex-1">
-          <span className="mb-1 block text-sm">ボトル名</span>
-          <input
-            name="name"
-            required
-            maxLength={50}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded border px-3 py-2"
-          />
-        </label>
         <label className="w-32">
           <span className="mb-1 block text-sm">1ケースの本数</span>
           <input
@@ -48,7 +49,7 @@ export function DrinkCreateForm({ categories }: { categories: Category[] }) {
             className="w-full rounded border px-3 py-2"
           />
         </label>
-        <label className="w-44">
+        <label className="min-w-44 flex-1">
           <span className="mb-1 block text-sm">種類</span>
           <select
             name="categoryId"
