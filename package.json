@@ -14,6 +14,8 @@
     "db:create-admin": "tsx --env-file=.env.local scripts/create-admin.ts",
     "db:staff": "tsx --env-file=.env.local scripts/staff.ts",
     "db:import-drinks": "tsx --env-file=.env.local scripts/import-drinks.ts",
+    "db:import-stock": "tsx --env-file=.env.local scripts/import-stock.ts",
+    "db:merge-drinks": "tsx --env-file=.env.local scripts/merge-drinks.ts",
     "db:assign-categories": "tsx --env-file=.env.local scripts/assign-categories.ts"
   },
   "dependencies": {
