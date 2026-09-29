@@ -4,11 +4,13 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { formatQuantity } from '@/lib/quantity';
 import { matchesSearch } from '@/lib/search';
-import type { Drink, Location, StockLevel } from '@/lib/types';
+import type { Category, Drink, Location, StockLevel } from '@/lib/types';
 
 const ONLY_IN_STOCK_KEY = 'stock:onlyInStock';
+const ALL = 'all';
+const UNCATEGORIZED = 'none';
 
-type Props = { locations: Location[]; drinks: Drink[]; levels: StockLevel[] };
+type Props = { locations: Location[]; drinks: Drink[]; levels: StockLevel[]; categories: Category[] };
 
 function DrinkLinks({ drink, href }: { drink: Drink; href: string }) {
   return (
@@ -27,10 +29,11 @@ function DrinkLinks({ drink, href }: { drink: Drink; href: string }) {
   );
 }
 
-export function StockView({ locations, drinks, levels }: Props) {
+export function StockView({ locations, drinks, levels, categories }: Props) {
   // Default to the all-locations table so every store's current stock is visible at a glance.
-  const [locationId, setLocationId] = useState('all');
+  const [locationId, setLocationId] = useState(ALL);
   const [query, setQuery] = useState('');
+  const [categoryId, setCategoryId] = useState(ALL);
   // Off by default; remembered per device. Read after mount so the server-rendered markup
   // (always "off") matches the first client render and avoids a hydration mismatch.
   const [onlyInStock, setOnlyInStock] = useState(false);
@@ -60,11 +63,32 @@ export function StockView({ locations, drinks, levels }: Props) {
   const qty = (loc: string, drink: string) => quantities.get(`${loc}:${drink}`) ?? 0;
   // Negative stock always counts as "has stock" — only an exact 0 is hidden.
   const hasStock = (d: Drink) =>
-    locationId === 'all' ? locations.some((l) => qty(l.id, d.id) !== 0) : qty(locationId, d.id) !== 0;
-  const visible = drinks.filter((d) => matchesSearch(d.name, query) && (!onlyInStock || hasStock(d)));
+    locationId === ALL ? locations.some((l) => qty(l.id, d.id) !== 0) : qty(locationId, d.id) !== 0;
+  // 種類のボタンに出す件数は「種類以外の条件を通ったもの」で数える。
+  // そうしないと、在庫があるものだけ表示にしているときに数字が実態と合わない。
+  const base = drinks.filter((d) => matchesSearch(d.name, query) && (!onlyInStock || hasStock(d)));
+  const inCategory = (d: Drink, key: string) =>
+    key === ALL ? true : key === UNCATEGORIZED ? d.categoryId === null : d.categoryId === key;
+  const countIn = (key: string) => base.filter((d) => inCategory(d, key)).length;
+  const uncategorized = countIn(UNCATEGORIZED);
+  const visible = base.filter((d) => inCategory(d, categoryId));
   // The drink name opens the entry page for that drink (and the selected location, if any).
   const entryHref = (drinkId: string) =>
-    locationId === 'all' ? `/entry?drink=${drinkId}` : `/entry?drink=${drinkId}&location=${locationId}`;
+    locationId === ALL ? `/entry?drink=${drinkId}` : `/entry?drink=${drinkId}&location=${locationId}`;
+
+  const chip = (key: string, label: string, highlight = false) => (
+    <button
+      key={key}
+      type="button"
+      onClick={() => setCategoryId(key)}
+      aria-pressed={categoryId === key}
+      className={`rounded border px-2 py-1 text-sm ${
+        categoryId === key ? 'bg-blue-600 text-white' : highlight ? 'bg-amber-50 text-amber-800' : 'bg-white'
+      }`}
+    >
+      {label} {countIn(key)}
+    </button>
+  );
 
   return (
     <div className="space-y-4">
@@ -94,6 +118,13 @@ export function StockView({ locations, drinks, levels }: Props) {
             className="w-full rounded border bg-white px-3 py-2"
           />
         </label>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-bold">種類でしぼる</span>
+        {chip(ALL, 'すべて')}
+        {categories.map((c) => chip(c.id, c.name))}
+        {uncategorized > 0 && chip(UNCATEGORIZED, '未分類', true)}
       </div>
 
       <label className="flex items-center gap-2 text-sm">
