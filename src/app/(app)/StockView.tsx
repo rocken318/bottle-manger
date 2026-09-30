@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { CATEGORY_ALL, categoryOptions, inCategory } from '@/lib/categoryFilter';
 import { formatQuantity } from '@/lib/quantity';
 import { matchesSearch } from '@/lib/search';
 import type { Category, Drink, Location, StockLevel } from '@/lib/types';
 
 const ONLY_IN_STOCK_KEY = 'stock:onlyInStock';
 const ALL = 'all';
-const UNCATEGORIZED = 'none';
 
 type Props = { locations: Location[]; drinks: Drink[]; levels: StockLevel[]; categories: Category[] };
 
@@ -33,7 +33,7 @@ export function StockView({ locations, drinks, levels, categories }: Props) {
   // Default to the all-locations table so every store's current stock is visible at a glance.
   const [locationId, setLocationId] = useState(ALL);
   const [query, setQuery] = useState('');
-  const [categoryId, setCategoryId] = useState(ALL);
+  const [categoryId, setCategoryId] = useState(CATEGORY_ALL);
   // Off by default; remembered per device. Read after mount so the server-rendered markup
   // (always "off") matches the first client render and avoids a hydration mismatch.
   const [onlyInStock, setOnlyInStock] = useState(false);
@@ -64,31 +64,14 @@ export function StockView({ locations, drinks, levels, categories }: Props) {
   // Negative stock always counts as "has stock" — only an exact 0 is hidden.
   const hasStock = (d: Drink) =>
     locationId === ALL ? locations.some((l) => qty(l.id, d.id) !== 0) : qty(locationId, d.id) !== 0;
-  // 種類のボタンに出す件数は「種類以外の条件を通ったもの」で数える。
+  // 種類の選択肢に出す件数は「種類以外の条件を通ったもの」で数える。
   // そうしないと、在庫があるものだけ表示にしているときに数字が実態と合わない。
   const base = drinks.filter((d) => matchesSearch(d.name, query) && (!onlyInStock || hasStock(d)));
-  const inCategory = (d: Drink, key: string) =>
-    key === ALL ? true : key === UNCATEGORIZED ? d.categoryId === null : d.categoryId === key;
-  const countIn = (key: string) => base.filter((d) => inCategory(d, key)).length;
-  const uncategorized = countIn(UNCATEGORIZED);
+  const options = categoryOptions(base, categories, categoryId);
   const visible = base.filter((d) => inCategory(d, categoryId));
   // The drink name opens the entry page for that drink (and the selected location, if any).
   const entryHref = (drinkId: string) =>
     locationId === ALL ? `/entry?drink=${drinkId}` : `/entry?drink=${drinkId}&location=${locationId}`;
-
-  const chip = (key: string, label: string, highlight = false) => (
-    <button
-      key={key}
-      type="button"
-      onClick={() => setCategoryId(key)}
-      aria-pressed={categoryId === key}
-      className={`rounded border px-2 py-1 text-sm ${
-        categoryId === key ? 'bg-blue-600 text-white' : highlight ? 'bg-amber-50 text-amber-800' : 'bg-white'
-      }`}
-    >
-      {label} {countIn(key)}
-    </button>
-  );
 
   return (
     <div className="space-y-4">
@@ -118,13 +101,20 @@ export function StockView({ locations, drinks, levels, categories }: Props) {
             className="w-full rounded border bg-white px-3 py-2"
           />
         </label>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-bold">種類でしぼる</span>
-        {chip(ALL, 'すべて')}
-        {categories.map((c) => chip(c.id, c.name))}
-        {uncategorized > 0 && chip(UNCATEGORIZED, '未分類', true)}
+        <label className="flex-1">
+          <span className="mb-1 block text-xs text-gray-600">種類でしぼる</span>
+          <select
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className="w-full rounded border bg-white px-3 py-2"
+          >
+            {options.map((o) => (
+              <option key={o.key} value={o.key}>
+                {o.label}（{o.count}）
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <label className="flex items-center gap-2 text-sm">

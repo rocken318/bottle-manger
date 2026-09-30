@@ -1,16 +1,18 @@
 'use client';
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
+import { CATEGORY_ALL, categoryOptions, inCategory } from '@/lib/categoryFilter';
 import { buildEntryItems, isFilled, rowTotal, type EntryQuantity } from '@/lib/entryItems';
 import { DISPOSE_REASON_LABELS, MOVEMENT_TYPE_LABELS } from '@/lib/movementLabels';
 import { formatQuantity } from '@/lib/quantity';
 import { matchesSearch } from '@/lib/search';
 import { resizeImage } from '@/lib/resizeImage';
-import type { DisposeReason, Drink, Location, MovementType, StockLevel } from '@/lib/types';
+import type { Category, DisposeReason, Drink, Location, MovementType, StockLevel } from '@/lib/types';
 import { submitEntry } from './actions';
 
 type Props = {
   drinks: Drink[];
+  categories: Category[];
   locations: Location[];
   levels: StockLevel[];
   defaultLocationId: string;
@@ -22,13 +24,14 @@ const MAX_PHOTOS = 3;
 const REASONS = Object.keys(DISPOSE_REASON_LABELS) as DisposeReason[];
 const EMPTY: EntryQuantity = { cases: '', bottles: '' };
 
-export function EntryForm({ drinks, locations, levels, defaultLocationId, initialQuery = '' }: Props) {
+export function EntryForm({ drinks, categories, locations, levels, defaultLocationId, initialQuery = '' }: Props) {
   const [type, setType] = useState<MovementType>('receive');
   const [locationId, setLocationId] = useState(defaultLocationId);
   const [destinationId, setDestinationId] = useState(
     locations.find((l) => l.id !== defaultLocationId)?.id ?? '',
   );
   const [query, setQuery] = useState(initialQuery);
+  const [categoryId, setCategoryId] = useState(CATEGORY_ALL);
   // 棚卸で数えるときなど、在庫が多いものから順に見たいことがある。
   const [sortByStock, setSortByStock] = useState(false);
   // Keyed by drink id so values typed into rows survive filtering.
@@ -53,14 +56,24 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
 
   const transferUnavailable = type === 'transfer' && locations.length < 2;
   const visible = useMemo(() => {
-    const filtered = drinks.filter((d) => matchesSearch(d.name, query));
+    const filtered = drinks.filter((d) => matchesSearch(d.name, query) && inCategory(d, categoryId));
     if (!sortByStock) return filtered;
     // 選んでいる拠点（移動のときは移動元）の在庫が多い順。同数なら元の並びのまま。
     return filtered
       .map((drink, index) => ({ drink, index, stock: stock.get(`${locationId}:${drink.id}`) ?? 0 }))
       .sort((a, b) => b.stock - a.stock || a.index - b.index)
       .map((x) => x.drink);
-  }, [drinks, query, sortByStock, stock, locationId]);
+  }, [drinks, query, categoryId, sortByStock, stock, locationId]);
+  // 種類の件数は、名前検索を通ったボトルで数える（種類の絞り込み自体は含めない）。
+  const categoryChoices = useMemo(
+    () =>
+      categoryOptions(
+        drinks.filter((d) => matchesSearch(d.name, query)),
+        categories,
+        categoryId,
+      ),
+    [drinks, categories, query, categoryId],
+  );
   const filled = useMemo(() => drinks.filter((d) => isFilled(quantities[d.id])), [drinks, quantities]);
   const hiddenFilled = useMemo(() => {
     const shown = new Set(visible.map((d) => d.id));
@@ -89,6 +102,14 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
     setQuery(next);
     // What would go negative changes with the filter, so any pending warning is stale.
     setWarnings(null);
+  };
+  const changeCategory = (next: string) => {
+    setCategoryId(next);
+    setWarnings(null);
+  };
+  const clearFilters = () => {
+    changeQuery('');
+    changeCategory(CATEGORY_ALL);
   };
   const clearPhotos = () => {
     for (const p of photos) URL.revokeObjectURL(p.url);
@@ -206,7 +227,7 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
         {hiddenFilled.length > 0 && `（うち ${hiddenFilled.length}件は絞り込みで非表示）`}
       </span>
       {hiddenFilled.length > 0 && (
-        <button type="button" onClick={() => changeQuery('')} className="text-blue-700 underline">
+        <button type="button" onClick={clearFilters} className="text-blue-700 underline">
           入力済みを表示
         </button>
       )}
@@ -326,6 +347,18 @@ export function EntryForm({ drinks, locations, levels, defaultLocationId, initia
           )}
 
           <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={categoryId}
+              onChange={(e) => changeCategory(e.target.value)}
+              aria-label="種類"
+              className="shrink-0 rounded border bg-white px-3 py-2"
+            >
+              {categoryChoices.map((o) => (
+                <option key={o.key} value={o.key}>
+                  {o.key === CATEGORY_ALL ? '種類：すべて' : o.label}（{o.count}）
+                </option>
+              ))}
+            </select>
             <input
               type="search"
               value={query}

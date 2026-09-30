@@ -1,5 +1,6 @@
 import { requireStaff } from '@/lib/auth/current';
 import { getDb } from '@/lib/db/client';
+import { listCategories } from '@/lib/repo/categories';
 import { listDrinks } from '@/lib/repo/drinks';
 import { listLocations } from '@/lib/repo/locations';
 import { getStockLevels } from '@/lib/repo/stock';
@@ -22,7 +23,12 @@ export default async function EntryPage({
   const drinkParam = param(params.drink);
   const locationParam = param(params.location);
   const db = getDb();
-  const [drinks, locations, levels] = await Promise.all([listDrinks(db), listLocations(db), getStockLevels(db)]);
+  const [drinks, locations, levels, categories] = await Promise.all([
+    listDrinks(db),
+    listLocations(db),
+    getStockLevels(db),
+    listCategories(db),
+  ]);
   if (locations.length === 0) return <p>有効な拠点がありません。管理者に連絡してください。</p>;
   if (drinks.length === 0) return <p>ボトルが登録されていません。「ボトル」タブから登録してください。</p>;
   const defaultLocationId =
@@ -39,7 +45,9 @@ export default async function EntryPage({
           <li>拠点を選びます。「移動」のときは移動元と移動先の両方を選びます。</li>
           <li>ボトルごとに「ケース」と「本」を入れます。どちらか片方だけでもOKです。</li>
           <li>いくつものボトルを一度に入力できます。数を入れた行は青くなります。</li>
-          <li>ボトルが多いときは「ボトル名で絞り込み」を使うと探しやすくなります。</li>
+          <li>
+            ボトルが多いときは、左のプルダウンで種類を選んだり、「ボトル名で絞り込み」を使ったりすると探しやすくなります。かっこの数字はその種類のボトル数です。
+          </li>
           <li>
             絞り込みの右のボタンを押すと、選んでいる拠点の在庫が多い順に並べ替わります。もう一度押すと元の並びに戻ります。
           </li>
@@ -69,6 +77,7 @@ export default async function EntryPage({
         // so the initial search/location are applied again.
         key={`${drinkParam ?? ''}:${locationParam ?? ''}`}
         drinks={drinks}
+        categories={categories}
         locations={locations}
         levels={levels}
         defaultLocationId={defaultLocationId}
