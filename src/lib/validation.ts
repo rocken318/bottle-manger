@@ -190,3 +190,16 @@ export const costSettingsSchema = z.object({
   varianceAmountThreshold: decimalText('金額の基準', 0).pipe(z.number().max(1_000_000_000, '金額の基準が大きすぎます')),
 });
 export type CostSettingsInput = z.infer<typeof costSettingsSchema>;
+
+export const KEEP_NOTE_MAX = 500;
+const keepNote = z.string().trim().max(KEEP_NOTE_MAX, `メモは${KEEP_NOTE_MAX}文字以内にしてください`);
+
+export const keepCreateSchema = z.object({
+  customerName: z.string().trim().min(1, 'お客様名を入力してください').max(50, 'お客様名は50文字以内にしてください'),
+  drinkId: z.uuid('お酒を選んでください'),
+  registeredOn: z.string().refine(isValidYmd, '登録日が正しくありません'),
+  note: keepNote,
+});
+
+export const keepNoteSchema = z.object({ id: uuid, note: keepNote });
+export const keepIdSchema = z.object({ id: uuid });
