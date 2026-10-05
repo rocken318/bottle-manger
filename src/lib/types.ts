@@ -81,3 +81,18 @@ export interface Movement {
   voidedAt: Date | null;
   voidedByName: string | null;
 }
+
+/** お客様のキープボトル。日付は YYYY-MM-DD の文字列（日本の暦日）。 */
+export interface KeepBottle {
+  id: string;
+  customerName: string;
+  drinkId: string;
+  /** 登録時点のお酒の名前。drinks 側を直しても変わらない。 */
+  drinkName: string;
+  registeredOn: string;
+  lastUsedOn: string;
+  status: 'active' | 'dropped';
+  droppedOn: string | null;
+  note: string;
+  createdAt: Date;
+}

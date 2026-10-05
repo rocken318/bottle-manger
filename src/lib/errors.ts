@@ -22,6 +22,8 @@ const MESSAGES: Record<string, string> = {
   too_many_photos: '写真は1回の登録につき3枚までです',
   photo_too_large: '写真のサイズが大きすぎます',
   price_not_found: '卸価格が見つかりません（すでに削除されています）',
+  keep_not_found: 'キープボトルが見つかりません',
+  keep_not_active: 'このキープボトルはすでに期限切れです',
 };
 
 export function toUserMessage(error: unknown): string {
