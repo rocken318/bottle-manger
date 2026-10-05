@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { todayJst } from '@/lib/keep';
 import { keepCreateSchema, keepNoteSchema } from '@/lib/validation';
 
 const valid = {
@@ -25,6 +26,16 @@ describe('keep validation', () => {
     expect(keepCreateSchema.safeParse({ ...valid, note: 'あ'.repeat(500) }).success).toBe(true);
     expect(keepCreateSchema.safeParse({ ...valid, note: 'あ'.repeat(501) }).error?.issues[0].message).toBe('メモは500文字以内にしてください');
     expect(keepNoteSchema.safeParse({ id: valid.drinkId, note: 'あ'.repeat(501) }).success).toBe(false);
+  });
+
+  it('rejects registration dates in the future or absurdly old (a typo would never expire / be uncorrectable)', () => {
+    expect(keepCreateSchema.safeParse({ ...valid, registeredOn: '2999-10-05' }).error?.issues[0].message).toBe(
+      '登録日は2000年以降、今日までの日付にしてください',
+    );
+    expect(keepCreateSchema.safeParse({ ...valid, registeredOn: '0026-10-05' }).success).toBe(false);
+    expect(keepCreateSchema.safeParse({ ...valid, registeredOn: '1999-12-31' }).success).toBe(false);
+    expect(keepCreateSchema.safeParse({ ...valid, registeredOn: '2000-01-01' }).success).toBe(true);
+    expect(keepCreateSchema.safeParse({ ...valid, registeredOn: todayJst() }).success).toBe(true);
   });
 
   it('rejects dates that are not real calendar days', () => {

@@ -14,7 +14,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <Link href="/keep" className="text-blue-700 underline">
             キープ管理へ
           </Link>
-          <Link href="/account"className="max-w-[8rem] truncate text-blue-700 underline" title="アカウント・PIN変更">
+          <Link href="/account" className="max-w-[8rem] truncate text-blue-700 underline" title="アカウント・PIN変更">
             {staff.name}
           </Link>
           <form action={logoutAction}>

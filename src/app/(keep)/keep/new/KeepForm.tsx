@@ -22,7 +22,7 @@ export function KeepForm({ drinks, categories, today }: { drinks: Drink[]; categ
       <input type="hidden" name="drinkId" value={drinkId} />
       <label className="block">
         <span className="mb-1 block text-sm">登録日</span>
-        <input name="registeredOn" type="date" required defaultValue={today} className="rounded border px-3 py-2" />
+        <input name="registeredOn" type="date" required defaultValue={today} max={today} min="2000-01-01" className="rounded border px-3 py-2" />
       </label>
       <label className="block">
         <span className="mb-1 block text-sm">メモ（500文字まで）</span>
