@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { parseMoneyInput } from './costs/money';
 import { isValidYmd } from './dates';
+import { todayJst } from './keep';
 import type { MovementInput } from './types';
 
 const uuid = z.uuid('不正な ID です');
@@ -190,3 +191,21 @@ export const costSettingsSchema = z.object({
   varianceAmountThreshold: decimalText('金額の基準', 0).pipe(z.number().max(1_000_000_000, '金額の基準が大きすぎます')),
 });
 export type CostSettingsInput = z.infer<typeof costSettingsSchema>;
+
+export const KEEP_NOTE_MAX = 500;
+const KEEP_EARLIEST_REGISTERED_ON = '2000-01-01';
+const keepNote = z.string().trim().max(KEEP_NOTE_MAX, `メモは${KEEP_NOTE_MAX}文字以内にしてください`);
+
+export const keepCreateSchema = z.object({
+  customerName: z.string().trim().min(1, 'お客様名を入力してください').max(50, 'お客様名は50文字以内にしてください'),
+  drinkId: z.uuid('お酒を選んでください'),
+  // 将来日や大昔の日付は打ち間違い。あとから直せず、期限が来ないボトルになってしまう。
+  registeredOn: z
+    .string()
+    .refine(isValidYmd, '登録日が正しくありません')
+    .refine((d) => d >= KEEP_EARLIEST_REGISTERED_ON && d <= todayJst(), '登録日は2000年以降、今日までの日付にしてください'),
+  note: keepNote,
+});
+
+export const keepNoteSchema = z.object({ id: uuid, note: keepNote });
+export const keepIdSchema = z.object({ id: uuid });

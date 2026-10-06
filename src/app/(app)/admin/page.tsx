@@ -29,6 +29,10 @@ const ACTION_LABELS: Record<string, string> = {
   'price.update': '卸価格上書き',
   'price.delete': '卸価格削除',
   'settings.update': '原価の設定変更',
+  'keep.create': 'キープ登録',
+  'keep.touch': 'キープの最終利用日更新',
+  'keep.note': 'キープのメモ変更',
+  'keep.drop': 'キープ期限切れ',
 };
 
 export default async function AdminPage() {
